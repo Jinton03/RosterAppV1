@@ -1,0 +1,3847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Junior Sport Rostering</title>
+  <!-- Supabase JS client — replace placeholder credentials before use -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --primary:        #2563eb;
+      --primary-light:  #dbeafe;
+      --success:        #16a34a;
+      --success-light:  #dcfce7;
+      --warning:        #d97706;
+      --warning-light:  #fef3c7;
+      --danger:         #dc2626;
+      --danger-light:   #fee2e2;
+      --gray-50:  #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    header {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      height: 56px;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .app-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    .nav-tabs { display: flex; gap: 4px; }
+
+    .nav-tab {
+      padding: 6px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--gray-500);
+      border: none;
+      background: none;
+      font-size: 13px;
+      transition: background .15s, color .15s;
+    }
+    .nav-tab.active  { background: var(--primary-light); color: var(--primary); }
+    .nav-tab:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Page visibility ── */
+    .page                    { display: none; }
+    .page.active             { display: block; }
+    .page.auth-page.active   { display: flex; }  /* auth pages need flex for centering */
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .card + .card { margin-top: 20px; }
+
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .card-body { padding: 18px; }
+
+    /* ── Forms ── */
+    .form-group { margin-bottom: 14px; }
+    .form-group:last-child { margin-bottom: 0; }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-500);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .optional-tag {
+      font-weight: 400;
+      color: var(--gray-400);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--gray-800);
+      background: white;
+      transition: border-color .15s, box-shadow .15s;
+      appearance: none;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background .15s, border-color .15s, box-shadow .15s;
+      white-space: nowrap;
+      line-height: 1;
+    }
+
+    .btn-primary  { background: var(--primary); color: white; border-color: var(--primary); }
+    .btn-primary:hover { background: #1d4ed8; }
+
+    .btn-secondary { background: white; color: var(--gray-700); border-color: var(--gray-300); }
+    .btn-secondary:hover { background: var(--gray-50); }
+
+    .btn-ghost { background: none; color: var(--gray-500); border-color: transparent; }
+    .btn-ghost:hover { background: var(--gray-100); color: var(--gray-700); }
+    .btn-danger { color: var(--danger, #dc2626) !important; }
+    .btn-danger:hover { background: #fee2e2 !important; }
+    .event-mgmt-actions { display: flex; gap: 4px; margin-top: 6px; }
+
+    .btn-danger-ghost { background: none; color: var(--danger); border-color: transparent; }
+    .btn-danger-ghost:hover { background: var(--danger-light); }
+
+    .btn-sm  { padding: 4px 10px; font-size: 12px; }
+    .btn-xs  { padding: 2px 8px;  font-size: 11px; }
+    .btn-full { width: 100%; }
+
+    /* ── Status badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      white-space: nowrap;
+    }
+
+    .badge-open             { background: var(--primary-light);  color: var(--primary); }
+    .badge-claimed          { background: var(--warning-light);  color: var(--warning); }
+    .badge-confirmed        { background: var(--success-light);  color: var(--success); }
+    .badge-needs-cover      { background: var(--danger-light);   color: var(--danger);  }
+    .badge-cover-requested  { background: #ffedd5; color: #c2410c; }
+
+    /* ── Template list ── */
+    .template-list { list-style: none; }
+
+    .template-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background .1s;
+      user-select: none;
+    }
+
+    .template-item:hover    { background: var(--gray-50); }
+    .template-item.selected { background: var(--primary-light); }
+
+    .template-item-name { font-weight: 500; font-size: 13px; color: var(--gray-800); }
+    .template-item-meta { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+
+    .chevron { color: var(--gray-400); flex-shrink: 0; }
+
+    /* ── Template role rows ── */
+    .role-rows { margin-bottom: 12px; }
+
+    .role-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .role-row:first-child { border-top: 1px solid var(--gray-100); }
+
+    .role-row-name  { flex: 1; font-size: 13px; color: var(--gray-800); }
+
+    .count-badge {
+      background: var(--gray-100);
+      color: var(--gray-600);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 30px;
+      text-align: center;
+    }
+
+    /* ── Inline add-role form ── */
+    .add-role-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding-top: 10px;
+    }
+
+    .add-role-row .role-input  { flex: 1; }
+    .add-role-row .count-input { width: 58px; }
+
+    /* ── Events list (right column) ── */
+    .section-heading {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 16px;
+    }
+
+    .events-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .events-section-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--text-muted);
+      padding: 4px 0 2px; margin-top: 4px;
+    }
+    .past-toggle-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; padding: 9px 12px;
+      background: var(--gray-100); border: 1px solid var(--gray-200);
+      border-radius: var(--radius); cursor: pointer;
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+    }
+    .past-toggle-btn:hover { background: var(--gray-200); }
+    .past-events-body { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
+    .event-card.past-event { opacity: 0.65; }
+    .event-card.past-event:hover { opacity: 0.9; }
+
+    .event-card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .event-card-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .event-date-time {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    .event-meta {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-top: 3px;
+    }
+
+    .event-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .template-tag {
+      background: var(--gray-100);
+      color: var(--gray-600);
+      padding: 3px 9px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .open-count {
+      font-size: 11px;
+      color: var(--gray-400);
+    }
+
+    /* ── Event notes (manager-written, visible to volunteers) ── */
+    .event-notes {
+      padding: 10px 18px;
+      font-size: 12px;
+      color: var(--gray-600);
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-100);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .slots-grid {
+      padding: 14px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .slot-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      font-size: 12px;
+    }
+
+    .slot-chip-role { font-weight: 600; color: var(--gray-700); }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 56px 24px;
+      color: var(--gray-400);
+      border: 2px dashed var(--gray-200);
+      border-radius: var(--radius);
+      background: white;
+    }
+
+    .empty-state h3  { font-size: 15px; color: var(--gray-500); margin-bottom: 6px; }
+    .empty-state p   { font-size: 13px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--gray-900);
+      color: white;
+      padding: 11px 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .2s, transform .2s;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── Loading bar ── */
+    #loading-bar {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--primary);
+      z-index: 200;
+      animation: loadingPulse 1s ease-in-out infinite;
+    }
+    @keyframes loadingPulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
+    }
+
+    /* ── Auth tabs (volunteer create account / log in) ── */
+    .auth-tabs  { display: flex; margin-bottom: 20px; border-bottom: 2px solid var(--gray-200); margin-top: 4px; }
+    .auth-tab   {
+      flex: 1; padding: 10px; background: none; border: none; font-size: 14px;
+      font-weight: 500; color: var(--gray-500); cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      transition: color .15s, border-color .15s;
+    }
+    .auth-tab.active { color: var(--primary); border-color: var(--primary); }
+
+    /* ── Team switcher select in volunteer header ── */
+    .team-switcher {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius);
+      padding: 4px 28px 4px 8px; font-size: 13px; font-weight: 500; color: var(--gray-800);
+      cursor: pointer; max-width: 200px; appearance: auto;
+    }
+
+    /* ── Header logout button ── */
+    .header-logout {
+      background: none; border: none; color: var(--gray-400); font-size: 18px;
+      cursor: pointer; padding: 4px 6px; border-radius: var(--radius); line-height: 1;
+    }
+    .header-logout:hover { color: var(--danger); background: var(--danger-light); }
+
+    /* ── Volunteer view ── */
+    .vol-identity-bar {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .vol-identity-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-600);
+      white-space: nowrap;
+    }
+
+    .vol-name-input {
+      flex: 1;
+      min-width: 180px;
+      max-width: 280px;
+      padding: 7px 11px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--gray-800);
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .vol-name-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    .vol-claims-pill {
+      margin-left: auto;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .vol-prompt {
+      text-align: center;
+      padding: 64px 24px;
+      color: var(--gray-400);
+      border: 2px dashed var(--gray-200);
+      border-radius: var(--radius);
+      background: white;
+    }
+
+    .vol-prompt h3 { font-size: 15px; color: var(--gray-500); margin-bottom: 6px; }
+    .vol-prompt p  { font-size: 13px; }
+
+    /* Slot grid inside volunteer event cards */
+    .vol-slots {
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .vol-slot {
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: white;
+    }
+
+    .vol-slot-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .vol-slot-role {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+
+    .vol-slot-who {
+      font-size: 11px;
+      color: var(--gray-500);
+      font-style: italic;
+    }
+
+    /* Open slot — subtle blue tint */
+    .vol-slot.is-open {
+      background: var(--gray-50);
+      border-color: var(--gray-200);
+    }
+
+    /* Claimed by current user — blue */
+    .vol-slot.is-mine {
+      background: var(--primary-light);
+      border-color: #93c5fd;
+    }
+
+    .vol-slot.is-mine .vol-slot-role { color: var(--primary); }
+
+    /* Confirmed — green */
+    .vol-slot.is-mine-confirmed {
+      background: var(--success-light);
+      border-color: #86efac;
+    }
+
+    .vol-slot.is-mine-confirmed .vol-slot-role { color: var(--success); }
+
+    /* Taken by someone else — greyed out */
+    .vol-slot.is-taken {
+      background: var(--gray-50);
+      border-color: var(--gray-200);
+      opacity: .7;
+    }
+
+    .vol-slot.is-taken .vol-slot-role { color: var(--gray-500); }
+
+    /* Cover requested — original vol's card */
+    .vol-slot.is-mine-cover-req { background: #fff7ed; border-color: #fdba74; }
+    .vol-slot.is-mine-cover-req .vol-slot-role { color: #c2410c; }
+    /* Volunteer offering cover */
+    .vol-slot.is-offering { background: #fff7ed; border-color: #fdba74; }
+    .vol-slot.is-offering .vol-slot-role { color: #c2410c; }
+    /* Slot needs cover and current vol could take it */
+    .vol-slot.is-cover-needed { background: var(--danger-light); border-color: #fca5a5; }
+    .vol-slot.is-cover-needed .vol-slot-role { color: var(--danger); }
+
+    .vol-all-filled {
+      padding: 14px 18px;
+      font-size: 12px;
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    /* ── Manager slot list (replaces chip grid) ── */
+    .slot-list { padding: 0; }
+
+    .slot-row {
+      display: grid;
+      grid-template-columns: 130px 1fr auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--gray-100);
+      transition: background .1s;
+    }
+
+    .slot-row:last-child { border-bottom: none; }
+    .slot-row:hover { background: var(--gray-50); }
+
+    /* Status-coloured rows in manager view */
+    .slot-row.row-claimed          { background: var(--warning-light); }
+    .slot-row.row-claimed:hover    { background: #fde68a; }
+    .slot-row.row-confirmed        { background: var(--success-light); }
+    .slot-row.row-confirmed:hover  { background: #bbf7d0; }
+    .slot-row.row-needs-cover      { background: var(--danger-light); }
+    .slot-row.row-needs-cover:hover{ background: #fecaca; }
+    .slot-row.row-cover-requested  { background: #ffedd5; border-left: 3px solid #f97316; }
+    .slot-row.row-cover-requested:hover { background: #fed7aa; }
+    .slot-row-cover-info { font-size: 11px; color: #c2410c; font-weight: 600; white-space: nowrap; }
+
+    .slot-row-role {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+
+    .slot-row-vol {
+      font-size: 13px;
+      color: var(--gray-600);
+    }
+
+    .slot-row-vol.empty { color: var(--gray-300); font-style: italic; }
+
+    .slot-row-actions { display: flex; gap: 6px; min-width: 0; }
+
+    /* ── Notification bell ── */
+    .notif-bell-wrap { margin-left: auto; position: relative; }
+
+    .notif-bell {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 18px;
+      line-height: 1;
+      position: relative;
+      transition: background .15s;
+    }
+
+    .notif-bell:hover { background: var(--gray-100); }
+
+    .notif-badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: var(--danger);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+    }
+
+    /* ── Notification panel ── */
+    .notif-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(0,0,0,.15);
+    }
+
+    .notif-overlay.open { display: block; }
+
+    .notif-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 340px;
+      background: white;
+      box-shadow: -4px 0 24px rgba(0,0,0,.12);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform .25s ease;
+    }
+
+    .notif-panel.open { transform: translateX(0); }
+
+    .notif-panel-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .notif-panel-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gray-900);
+      flex: 1;
+    }
+
+    .notif-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .notif-item {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--gray-100);
+      cursor: default;
+      transition: background .1s;
+    }
+
+    .notif-item:last-child { border-bottom: none; }
+    .notif-item.unread { background: #fafbff; }
+    .notif-item:hover { background: var(--gray-50); }
+
+    .notif-item-msg {
+      font-size: 13px;
+      color: var(--gray-800);
+      line-height: 1.4;
+    }
+
+    .notif-item-msg strong { color: var(--gray-900); }
+
+    .notif-item-time {
+      font-size: 11px;
+      color: var(--gray-400);
+      margin-top: 3px;
+    }
+
+    .notif-unread-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--primary);
+      border-radius: 9999px;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .notif-item-inner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .notif-empty {
+      padding: 48px 20px;
+      text-align: center;
+      color: var(--gray-400);
+      font-size: 13px;
+    }
+
+    /* Notification type icons */
+    .notif-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      width: 24px;
+      text-align: center;
+    }
+
+    /* ── Notification detail modal (e.g. full team message) ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(0,0,0,.35);
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: 24px;
+      max-width: 420px;
+      width: 90%;
+    }
+    .modal-box h3 { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 10px; }
+    .modal-box p  { font-size: 14px; color: var(--gray-700); line-height: 1.6; white-space: pre-wrap; }
+    .modal-time   { font-size: 11px; color: var(--gray-400); margin-top: 14px; }
+    .modal-close-row { display: flex; justify-content: flex-end; margin-top: 18px; }
+
+    /* ── Auth pages (setup / login / join) ── */
+    /* Note: display is controlled by .page / .page.active rules above */
+    .auth-page {
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 56px);
+      padding: 24px;
+    }
+
+    .auth-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: 36px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .auth-card h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--gray-900);
+    }
+
+    .auth-subtitle {
+      color: var(--gray-500);
+      font-size: 13px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .auth-card .form-group { margin-top: 14px; }
+
+    .auth-card .btn-full { margin-top: 20px; }
+
+    /* Team code input on join page */
+    .join-code-input {
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      font-size: 22px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    /* Manager header extras */
+    #manager-header-extras {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .team-name-label {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--gray-700);
+    }
+
+    .code-chip {
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    /* Volunteer static name display in identity bar */
+    .vol-name-static {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--gray-800);
+    }
+
+    /* No-team placeholder */
+    .no-team-message {
+      max-width: 360px;
+      margin: 80px auto;
+      text-align: center;
+      color: var(--gray-500);
+    }
+    .no-team-message h3 { font-size: 18px; margin-bottom: 8px; color: var(--gray-700); }
+
+    /* ── Landing page choice tiles ── */
+    .choice-tiles {
+      display: flex;
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .choice-tile {
+      flex: 1;
+      padding: 28px 12px 22px;
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius);
+      background: white;
+      cursor: pointer;
+      text-align: center;
+      font-family: inherit;
+      transition: border-color .15s, box-shadow .15s, transform .1s;
+    }
+
+    .choice-tile:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .tile-icon  { font-size: 36px; margin-bottom: 10px; }
+    .tile-label { font-size: 15px; font-weight: 700; color: var(--gray-800); }
+    .tile-sub   { font-size: 12px; color: var(--gray-500); margin-top: 4px; line-height: 1.4; }
+
+    /* Back link on auth pages */
+    .auth-back {
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--gray-400);
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .auth-back:hover { color: var(--gray-600); }
+
+    /* ── Refresh button ── */
+    .refresh-btn {
+      background: none; border: none; cursor: pointer;
+      padding: 6px 8px; border-radius: 6px; font-size: 18px;
+      color: var(--gray-400); transition: color .15s, background .15s, transform .3s;
+    }
+    .refresh-btn:hover  { background: var(--gray-100); color: var(--gray-600); }
+    .refresh-btn.spinning { transform: rotate(360deg); }
+
+    /* ── Volunteers panel ── */
+    .vol-list-item {
+      padding: 12px 20px; border-bottom: 1px solid var(--gray-100);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .vol-list-item:last-child { border-bottom: none; }
+    .vol-list-name { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+    .vol-list-meta { font-size: 11px; color: var(--gray-400); }
+
+    /* ── Role eligibility chips (in volunteer panel) ── */
+    .vol-elig-section { margin-top: 8px; }
+    .vol-elig-label   { font-size: 10px; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: .05em; color: var(--gray-400); margin-bottom: 5px; }
+    .vol-elig-chips   { display: flex; flex-wrap: wrap; gap: 5px; }
+    .elig-chip {
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      cursor: pointer; border: 1.5px solid; transition: opacity .15s;
+      line-height: 1.4;
+    }
+    .elig-chip:hover  { opacity: .75; }
+    .elig-chip-on  { background: var(--success-light); color: var(--success);    border-color: #86efac; }
+    .elig-chip-off { background: var(--gray-100);      color: var(--gray-500);   border-color: var(--gray-200); }
+
+    /* ── Restricted roles in template editor ── */
+    .btn-lock-on  { color: var(--warning); }
+    .btn-lock-off { color: var(--gray-400); }
+    .role-row.role-row-restricted                { background: var(--warning-light); }
+    .role-row.role-row-restricted .role-row-name { color: var(--warning); font-weight: 600; }
+
+    /* ── Inline assign dropdown in manager slot rows ── */
+    .assign-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .assign-select {
+      flex: 1; min-width: 120px; max-width: 160px;
+      padding: 4px 6px; font-size: 12px; border: 1px solid var(--gray-300);
+      border-radius: var(--radius); background: white; color: var(--gray-800);
+    }
+
+    /* ── Volunteer slot: nominated/pending note ── */
+    .vol-slot-pending {
+      font-size: 11px; color: var(--warning); font-style: italic; flex-shrink: 0;
+    }
+
+    /* ── Restricted role visual accent (both views) ── */
+    .slot-row.slot-restricted                   { border-left: 3px solid var(--warning); }
+    .slot-row.slot-restricted .slot-row-role    { color: var(--warning); }
+    .vol-slot.slot-restricted                   { border-left: 3px solid var(--warning); }
+
+    /* ══════════════════════════════════════════════
+       RESPONSIVE — mobile (≤ 680px)
+    ══════════════════════════════════════════════ */
+    @media (max-width: 680px) {
+
+      /* ── Header ── */
+      header {
+        padding: 0 12px;
+        gap: 8px;
+        height: 52px;
+      }
+      .app-name { font-size: 13px; }
+      .team-name-label { display: none; }        /* code chip is enough on mobile */
+      .copy-link-label { display: none; }        /* icon-only copy button */
+      #manager-header-extras { gap: 6px; }
+      #volunteer-header-extras .vol-identity-label { display: none; }
+
+      /* ── Main container ── */
+      .container { padding: 14px 12px; }
+
+      /* ── Two-col → single col; events above forms ── */
+      .two-col {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .two-col > div:last-child { order: -1; }  /* events list first on mobile */
+
+      /* ── Touch-friendly inputs (≥16px prevents iOS auto-zoom) ── */
+      .form-input,
+      .form-select {
+        font-size: 16px;
+        padding: 11px 12px;
+      }
+      .join-code-input { font-size: 20px; }
+
+      /* ── Larger touch targets for buttons ── */
+      .btn        { min-height: 44px; }
+      .btn-sm     { min-height: 38px; padding: 6px 12px; }
+      .btn-xs     { min-height: 32px; }
+
+      /* ── Event card header — stack on narrow screens ── */
+      .event-card-header {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 14px;
+      }
+      .event-right {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-self: stretch;
+      }
+      .event-mgmt-actions { margin-top: 0; margin-left: auto; }
+      .event-date-time { font-size: 14px; }
+
+      /* ── Manager slot rows — 2×2 grid ── */
+      .slot-row {
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 2px 8px;
+        padding: 10px 14px;
+      }
+      .slot-row-role    { grid-column: 1; grid-row: 1; }
+      .slot-row-vol     { grid-column: 1; grid-row: 2; font-size: 12px; }
+      .slot-row .badge  { grid-column: 2; grid-row: 1; align-self: center; }
+      .slot-row-actions { grid-column: 2; grid-row: 2; justify-content: flex-end; }
+
+      /* ── Volunteer slot grid — 2 columns ── */
+      .vol-slots {
+        padding: 10px 12px;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .vol-slot { padding: 10px 10px; }
+      .vol-slot-role { font-size: 12px; }
+
+      /* ── Auth pages — full-bleed card on mobile ── */
+      .auth-page {
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: 0;
+        min-height: calc(100vh - 52px);
+      }
+      .auth-card {
+        padding: 24px 20px;
+        border-radius: 0;
+        box-shadow: none;
+        max-width: 100%;
+        min-height: calc(100vh - 52px);
+      }
+      .auth-card h2 { font-size: 18px; }
+
+      /* ── Choice tiles — stack on very narrow screens ── */
+      @media (max-width: 380px) {
+        .choice-tiles { flex-direction: column; }
+      }
+
+      /* ── Notification panel — full width ── */
+      .notif-panel { width: 100%; }
+
+      /* ── Toast — full-width at bottom ── */
+      #toast {
+        right: 12px;
+        left: 12px;
+        bottom: 16px;
+        text-align: center;
+      }
+
+      /* ── Section heading ── */
+      .section-heading { font-size: 15px; margin-bottom: 10px; }
+
+      /* ── Template editor add-role row ── */
+      .add-role-row { flex-wrap: wrap; }
+      .add-role-row .role-input  { min-width: 140px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-bar"></div>
+
+<header>
+  <div class="app-name">⚽ Junior Sport Rostering</div>
+
+  <!-- Shown in manager mode after login -->
+  <div id="manager-header-extras" style="display:none; align-items:center; gap:10px;">
+    <span class="team-name-label" id="header-team-name"></span>
+    <span class="code-chip" id="header-join-code"></span>
+    <button class="header-logout" onclick="managerLogout()" title="Log out">⏻</button>
+  </div>
+
+  <!-- Shown in volunteer mode after logging in -->
+  <div id="volunteer-header-extras" style="display:none; flex:1; align-items:center; gap:10px;">
+    <span class="vol-identity-label" id="header-vol-name" style="white-space:nowrap;"></span>
+    <select id="team-switcher" class="team-switcher" onchange="switchTeam(this.value)" title="Switch team"></select>
+    <button class="btn btn-ghost btn-sm" onclick="showJoinTeam()" title="Join another team" style="font-size:12px;white-space:nowrap;">+ Team</button>
+    <span class="vol-claims-pill" id="vol-claims-pill" style="margin-left:auto;white-space:nowrap;">0 slots claimed</span>
+    <button class="header-logout" onclick="volunteerLogout()" title="Log out">⏻</button>
+  </div>
+
+  <!-- Refresh: visible in both manager and volunteer mode -->
+  <button class="refresh-btn" id="refresh-btn" style="display:none;" onclick="refreshView()" title="Refresh">↻</button>
+
+  <!-- Volunteer list: manager only -->
+  <div class="notif-bell-wrap" id="vol-list-btn-wrap" style="display:none;">
+    <button class="notif-bell" onclick="toggleVolunteerPanel()" title="Team volunteers">👥</button>
+  </div>
+
+  <!-- Message team: manager only -->
+  <div class="notif-bell-wrap" id="message-team-btn-wrap" style="display:none;">
+    <button class="notif-bell" onclick="toggleMessagePanel()" title="Message your team">✉️</button>
+  </div>
+
+  <!-- Notification bell: manager + volunteer, once logged in -->
+  <div class="notif-bell-wrap" id="notif-bell-wrap" style="display:none;">
+    <button class="notif-bell" onclick="toggleNotifPanel()" title="Notifications">
+      🔔
+      <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+    </button>
+  </div>
+
+  <!-- Notification settings: manager + volunteer, once logged in -->
+  <div class="notif-bell-wrap" id="notif-settings-btn-wrap" style="display:none;">
+    <button class="notif-bell" onclick="toggleNotifSettingsPanel()" title="Notification settings">⚙️</button>
+  </div>
+</header>
+
+<!-- Notification panel + overlay -->
+<div class="notif-overlay" id="notif-overlay" onclick="toggleNotifPanel()"></div>
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-panel-header">
+    <span class="notif-panel-title">Notifications</span>
+    <button class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</button>
+    <button class="btn btn-ghost btn-sm" onclick="toggleNotifPanel()">✕</button>
+  </div>
+  <div class="notif-list" id="notif-list">
+    <div class="notif-empty">No notifications yet.</div>
+  </div>
+</div>
+
+<!-- Notification settings panel + overlay -->
+<div class="notif-overlay" id="notif-settings-overlay" onclick="toggleNotifSettingsPanel()"></div>
+<div class="notif-panel" id="notif-settings-panel">
+  <div class="notif-panel-header">
+    <span class="notif-panel-title">Notification Settings</span>
+    <button class="btn btn-ghost btn-sm" onclick="toggleNotifSettingsPanel()">✕</button>
+  </div>
+  <div class="notif-list" id="notif-settings-list" style="padding:14px 20px;"></div>
+</div>
+
+<!-- Volunteer list panel -->
+<div class="notif-overlay" id="vol-panel-overlay" onclick="toggleVolunteerPanel()"></div>
+<div class="notif-panel" id="vol-panel">
+  <div class="notif-panel-header">
+    <span class="notif-panel-title">Team Volunteers</span>
+    <button class="btn btn-ghost btn-sm" onclick="toggleVolunteerPanel()">✕</button>
+  </div>
+  <div class="notif-list" id="vol-list">
+    <div class="notif-empty">No volunteers yet.</div>
+  </div>
+</div>
+
+<!-- Message team panel -->
+<div class="notif-overlay" id="message-overlay" onclick="toggleMessagePanel()"></div>
+<div class="notif-panel" id="message-panel">
+  <div class="notif-panel-header">
+    <span class="notif-panel-title">Message Your Team</span>
+    <button class="btn btn-ghost btn-sm" onclick="toggleMessagePanel()">✕</button>
+  </div>
+  <div style="padding:16px 20px; display:flex; flex-direction:column; gap:10px;">
+    <p style="font-size:12px; color:var(--gray-500); margin:0;">
+      Sends an in-app notification to every volunteer currently on your team.
+      Volunteers who've turned off "team message" notifications won't receive it.
+    </p>
+    <textarea id="message-team-text" class="form-input" rows="6"
+              style="resize:vertical; font-family:inherit;"
+              placeholder="e.g. Reminder: bring spare bibs to Saturday's game."></textarea>
+    <button class="btn btn-primary btn-full" onclick="sendTeamMessage()">Send to Team</button>
+  </div>
+</div>
+
+<!-- Notification detail modal — used for viewing a full team message -->
+<div class="modal-overlay" id="notif-detail-overlay" onclick="closeNotifDetail()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3 id="notif-detail-title">Message</h3>
+    <p id="notif-detail-body"></p>
+    <div class="modal-time" id="notif-detail-time"></div>
+    <div class="modal-close-row">
+      <button class="btn btn-secondary btn-sm" onclick="closeNotifDetail()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MANAGER PAGE
+════════════════════════════════════════════════ -->
+<!-- LANDING PAGE -->
+<div id="page-landing" class="page auth-page active">
+  <div class="auth-card" style="max-width:480px; text-align:center;">
+    <div style="font-size:40px; margin-bottom:12px;">⚽</div>
+    <h2>Junior Sport Rostering</h2>
+    <p class="auth-subtitle">Log in or create an account — you'll choose whether to set up as a manager or a volunteer next.</p>
+    <div class="choice-tiles">
+      <button class="choice-tile" onclick="showPageDirect('login')">
+        <div class="tile-icon">🔑</div>
+        <div class="tile-label">Log In</div>
+        <div class="tile-sub">Already have an account</div>
+      </button>
+      <button class="choice-tile" onclick="showPageDirect('signup')">
+        <div class="tile-icon">🆕</div>
+        <div class="tile-label">Sign Up</div>
+        <div class="tile-sub">First time here</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SIGN UP (creates the login only — role is chosen afterwards) -->
+<div id="page-signup" class="page auth-page">
+  <div class="auth-card">
+    <button class="auth-back" onclick="showPageDirect('landing')">← Back</button>
+    <h2>Create Your Account</h2>
+    <p class="auth-subtitle">One login works for both roles — right after this you'll choose to set up as a manager, a volunteer, or both over time.</p>
+    <div class="form-group">
+      <label class="form-label">Your Name</label>
+      <input id="signup-name" type="text" class="form-input" placeholder="First and last name"
+             onkeydown="if(event.key==='Enter') document.getElementById('signup-email').focus()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input id="signup-email" type="email" class="form-input" placeholder="your@email.com"
+             onkeydown="if(event.key==='Enter') document.getElementById('signup-password').focus()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input id="signup-password" type="password" class="form-input" placeholder="Minimum 6 characters"
+             onkeydown="if(event.key==='Enter') document.getElementById('signup-password2').focus()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm Password</label>
+      <input id="signup-password2" type="password" class="form-input" placeholder="Type it again"
+             onkeydown="if(event.key==='Enter') signUpAccount()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="signUpAccount()">Create Account</button>
+  </div>
+</div>
+
+<!-- TEAM SETUP (reached from the role-choice screen — already logged in,
+     so this only needs a team name) -->
+<div id="page-setup" class="page auth-page">
+  <div class="auth-card">
+    <button class="auth-back" onclick="showRoleChoice()">← Back</button>
+    <h2>Create your team</h2>
+    <p class="auth-subtitle">Volunteers will use a 6-letter code to join — you'll see it after creating your team.</p>
+    <div class="form-group">
+      <label class="form-label">Team Name</label>
+      <input id="setup-team-name" type="text" class="form-input" placeholder="e.g. Riverside FC Under 12s"
+             onkeydown="if(event.key==='Enter') setupTeam()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="setupTeam()">Create Team</button>
+  </div>
+</div>
+
+<!-- LOG IN (shared by managers and volunteers) -->
+<div id="page-login" class="page auth-page">
+  <div class="auth-card">
+    <button class="auth-back" onclick="showPageDirect('landing')">← Back</button>
+    <h2>Log In</h2>
+    <p class="auth-subtitle">Enter your email and password — you'll pick manager or volunteer next.</p>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input id="login-email" type="email" class="form-input" placeholder="your@email.com"
+             onkeydown="if(event.key==='Enter') document.getElementById('login-password').focus()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input id="login-password" type="password" class="form-input" placeholder="Your password"
+             onkeydown="if(event.key==='Enter') unifiedLogin()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="unifiedLogin()">Log In</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px;" onclick="showPageDirect('forgot-password')">Forgot password?</button>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD -->
+<div id="page-forgot-password" class="page auth-page">
+  <div class="auth-card">
+    <button class="auth-back" onclick="showPageDirect('login')">← Back</button>
+    <h2>Reset your password</h2>
+    <p class="auth-subtitle">Enter your account email and we'll send you a link to set a new password.</p>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input id="forgot-email" type="email" class="form-input" placeholder="your@email.com"
+             onkeydown="if(event.key==='Enter') sendPasswordReset()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="sendPasswordReset()">Send Reset Link</button>
+  </div>
+</div>
+
+<!-- SET NEW PASSWORD (reached via the emailed reset link) -->
+<div id="page-reset-password" class="page auth-page">
+  <div class="auth-card">
+    <h2>Set a new password</h2>
+    <p class="auth-subtitle">Choose a new password for your account.</p>
+    <div class="form-group">
+      <label class="form-label">New Password</label>
+      <input id="reset-password" type="password" class="form-input" placeholder="Minimum 6 characters"
+             onkeydown="if(event.key==='Enter') document.getElementById('reset-password2').focus()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm New Password</label>
+      <input id="reset-password2" type="password" class="form-input" placeholder="Type it again"
+             onkeydown="if(event.key==='Enter') submitNewPassword()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="submitNewPassword()">Set Password</button>
+  </div>
+</div>
+
+<!-- ROLE CHOICE — shown after every login, every signup, and every session
+     restore. The Manager tile shows the team name if one exists, or an
+     invitation to create one. The Volunteer tile looks the same either way;
+     only where it takes you on click depends on whether they already have
+     a volunteer profile and have joined a team. -->
+<div id="page-role-choice" class="page auth-page">
+  <div class="auth-card" style="max-width:480px; text-align:center;">
+    <h2>Welcome!</h2>
+    <p class="auth-subtitle">Continue as:</p>
+    <div class="choice-tiles">
+      <button class="choice-tile" onclick="clickManagerTile()">
+        <div class="tile-icon">🗂️</div>
+        <div class="tile-label" id="role-choice-manager-label">Manager</div>
+        <div class="tile-sub" id="role-choice-manager-sub">Create events &amp; manage roles</div>
+      </button>
+      <button class="choice-tile" onclick="clickVolunteerTile()">
+        <div class="tile-icon">🙋</div>
+        <div class="tile-label">Volunteer</div>
+        <div class="tile-sub">Sign up for roles</div>
+      </button>
+    </div>
+    <button class="btn btn-ghost btn-full" style="margin-top:16px;" onclick="logoutEverything()">Log Out</button>
+  </div>
+</div>
+
+<!-- VOLUNTEER JOIN TEAM (shown the first time someone sets up as a
+     volunteer, and again via "+ Team" to join additional teams) -->
+<div id="page-vol-join-team" class="page auth-page">
+  <div class="auth-card">
+    <button class="auth-back" onclick="backFromJoinTeam()">← Back</button>
+    <h2>Join a Team</h2>
+    <p class="auth-subtitle">Enter the 6-letter code from your manager.</p>
+    <div class="form-group" style="margin-top:16px;">
+      <label class="form-label">Team Code</label>
+      <input id="vol-join-code" type="text" class="form-input join-code-input"
+             placeholder="ABC123" maxlength="6"
+             oninput="this.value = this.value.toUpperCase()"
+             onkeydown="if(event.key==='Enter') joinTeamWithCode()">
+    </div>
+    <div class="form-group" id="vol-join-phone-group">
+      <label class="form-label">Phone <span class="optional-tag">(optional — for manager contact)</span></label>
+      <input id="vol-join-phone" type="tel" class="form-input" placeholder="Mobile number"
+             onkeydown="if(event.key==='Enter') joinTeamWithCode()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="joinTeamWithCode()">Join Team →</button>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button class="btn btn-ghost btn-full" id="vol-join-skip-btn"
+              style="display:none;" onclick="skipToVolunteerView()">Skip for now</button>
+      <button class="btn btn-ghost btn-full" onclick="volunteerLogout()">Log Out</button>
+    </div>
+  </div>
+</div>
+
+<div id="page-manager" class="page">
+  <div class="container">
+    <div class="two-col">
+
+      <!-- ── Left column: templates + create event ── -->
+      <div>
+
+        <!-- Event Templates -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Event Templates</span>
+            <button class="btn btn-secondary btn-sm" onclick="newTemplate()">+ New Event Template</button>
+          </div>
+          <div class="card-body" style="padding: 10px;">
+            <ul class="template-list" id="template-list"></ul>
+          </div>
+        </div>
+
+        <!-- Template Editor (shown when a template is selected) -->
+        <div class="card" id="template-editor" style="display:none;">
+          <div class="card-header">
+            <span class="card-title" id="editor-title">Edit Event Template</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-danger-ghost btn-sm" onclick="deleteTemplate()">Delete</button>
+              <button class="btn btn-primary btn-sm" onclick="saveAndCloseTemplate()">Save</button>
+            </div>
+          </div>
+          <div class="card-body">
+
+            <div class="form-group">
+              <label class="form-label">Event Template Name</label>
+              <input id="tpl-name" type="text" class="form-input"
+                     placeholder="e.g. Regular Game"
+                     oninput="saveTemplateName()">
+            </div>
+
+            <div class="form-label" style="margin-bottom:6px;">Roles in this event template</div>
+            <div id="tpl-roles"></div>
+
+            <!-- Add role -->
+            <div class="add-role-row">
+              <input id="new-role-name"  type="text"   class="form-input role-input"  placeholder="Role name (e.g. Scorer)">
+              <input id="new-role-count" type="number" class="form-input count-input" min="1" max="20" value="1"
+                     title="How many of this role per event">
+              <button class="btn btn-secondary btn-sm" onclick="addRole()">Add</button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Create / Edit Event -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" id="ev-form-title">Add Event</span>
+          </div>
+          <div class="card-body">
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Date</label>
+                <input id="ev-date" type="date" class="form-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Time</label>
+                <input id="ev-time" type="time" class="form-input">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input id="ev-location" type="text" class="form-input"
+                     placeholder="e.g. Riverside Oval, Field 3">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                Opponent <span class="optional-tag">(optional)</span>
+              </label>
+              <input id="ev-opponent" type="text" class="form-input"
+                     placeholder="e.g. Northside FC">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                Notes <span class="optional-tag">(optional — visible to volunteers)</span>
+              </label>
+              <textarea id="ev-notes" class="form-input" rows="3" style="resize:vertical; font-family:inherit;"
+                        placeholder="e.g. Parking is on Elm St this week — main lot is closed."></textarea>
+            </div>
+
+            <div class="form-group" id="ev-template-group">
+              <label class="form-label">Event Template</label>
+              <select id="ev-template" class="form-select">
+                <option value="">Select an event template…</option>
+              </select>
+              <div id="ev-template-locked" style="display:none; font-size:12px; color:var(--text-muted); margin-top:4px;">
+                Event template cannot be changed once slots exist. Delete and recreate the event to use a different one.
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary btn-full" id="ev-submit-btn" onclick="addEvent()">
+                Create Event + Generate Slots
+              </button>
+              <button class="btn btn-ghost" id="ev-cancel-btn" onclick="cancelEditEvent()" style="display:none; white-space:nowrap;">
+                Cancel
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Per-event role add/remove — shown only while editing an event.
+             Adds/removes role_slots for THIS event only; the shared event
+             template used to create other events is not affected. -->
+        <div class="card" id="event-roles-editor" style="display:none;">
+          <div class="card-header">
+            <span class="card-title">Roles for This Event</span>
+          </div>
+          <div class="card-body">
+            <div id="event-roles-list"></div>
+            <div class="add-role-row">
+              <input id="event-new-role-name"  type="text"   class="form-input role-input"  placeholder="Role name (e.g. Extra Scorer)">
+              <input id="event-new-role-count" type="number" class="form-input count-input" min="1" max="20" value="1"
+                     title="How many slots to add">
+              <button class="btn btn-secondary btn-sm" onclick="addRoleToEvent()">Add</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /left column -->
+
+      <!-- ── Right column: events ── -->
+      <div>
+        <div class="section-heading">Season Events</div>
+        <div id="events-list" class="events-list"></div>
+      </div>
+
+    </div><!-- /two-col -->
+  </div><!-- /container -->
+</div><!-- /page-manager -->
+
+<!-- ══════════════════════════════════════════════
+     VOLUNTEER PAGE
+════════════════════════════════════════════════ -->
+<div id="page-volunteer" class="page">
+  <div class="container">
+
+    <!-- Identity bar (name set during join; pill updated by renderVolunteerView) -->
+    <div class="vol-identity-bar" style="display:none;" id="vol-identity-bar">
+      <span class="vol-identity-label">Volunteering as:</span>
+      <span class="vol-name-static" id="vol-name-bar"></span>
+      <span class="vol-identity-label" style="margin-left:auto;">Manager contact:</span>
+      <a class="vol-name-static" id="vol-manager-contact" href="#" style="text-decoration:none;"></a>
+    </div>
+
+    <!-- Events + slots -->
+    <div id="vol-events-list" class="events-list"></div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// SUPABASE CLIENT
+// Replace the two placeholder strings with your project's
+// URL and anon key from the Supabase dashboard → Project Settings → API.
+// ════════════════════════════════════════════════════════════
+const { createClient } = supabase;
+const db = createClient('https://befvaphuifrasynhkdbp.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZnZhcGh1aWZyYXN5bmhrZGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NzY4ODcsImV4cCI6MjA5ODQ1Mjg4N30.IzwjQmdfWvpyK8xOyVPyah4Js0aQtA3z50oMzM6bPYQ');
+
+// ════════════════════════════════════════════════════════════
+// SESSION STATE
+// Only data that is local to this browser session lives here.
+// All persistent data lives in Supabase.
+// ════════════════════════════════════════════════════════════
+
+const state = {
+  volunteerId:         null,   // resolved after join form
+  volunteerName:       '',     // set after join form
+  selectedEventTypeId: null,   // which event type is open in the editor
+  notifications:       [],     // cached copy of the current recipient's rows (from `notifications` table)
+  team:                null,   // loaded from DB on init { id, name, join_code, manager_password, unfilled_slots_reminder_hours }
+  isManager:           false,
+  editingEventId:      null,
+  eligibleRoleIds:     new Set(), // role_template_ids this volunteer is eligible for
+  volunteerTeams:      [],        // all teams this volunteer has joined (for team switcher)
+  authUserId:          null,      // current Supabase Auth user id (set on login/signup/session restore)
+  _authName:           '',        // name captured at signup, used to pre-fill a first-time volunteer profile
+  _authVolunteer:      null,      // volunteer row for the current auth account, if one exists (from showRoleChoice)
+  _joinTeamReturnTo:   'role-choice' // where the join-team page's "← Back" goes: 'role-choice' or 'volunteer'
+};
+
+
+// ════════════════════════════════════════════════════════════
+// LOADING BAR
+// ════════════════════════════════════════════════════════════
+let _loadingCount = 0;
+function setLoading(show) {
+  _loadingCount = Math.max(0, _loadingCount + (show ? 1 : -1));
+  document.getElementById('loading-bar').style.display = _loadingCount > 0 ? 'block' : 'none';
+}
+
+/**
+ * Wraps an async operation with loading state + error handling.
+ * Usage:  await run(() => someAsyncThing())
+ */
+async function run(fn) {
+  setLoading(true);
+  try {
+    await fn();
+  } catch (err) {
+    console.error(err);
+    showToast('Something went wrong: ' + (err.message || String(err)));
+  } finally {
+    setLoading(false);
+  }
+}
+
+// Supabase v2 maybeSingle() fires PGRST116 when 0 rows exist instead of
+// returning { data: null, error: null }. Treat PGRST116 as "not found".
+async function maybeOne(query) {
+  const { data, error } = await query.maybeSingle();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+// ════════════════════════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════════════════════════
+
+/** Formats "2025-07-12" → "Sat 12 Jul 2025". */
+function fmtDate(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-AU', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+  });
+}
+
+/** Formats "09:00:00" or "09:00" → "9:00am". */
+function fmtTime(t) {
+  const parts = (t || '').split(':').map(Number);
+  const h = parts[0] || 0, m = parts[1] || 0;
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')}${h >= 12 ? 'pm' : 'am'}`;
+}
+
+/** Escapes HTML special chars to prevent XSS. */
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/**
+ * Supabase stores status with underscores (needs_cover).
+ * CSS classes use hyphens (badge-needs-cover).
+ * Normalise on the way in from the DB.
+ */
+function normStatus(s) { return s ? s.replace(/_/g, '-') : s; }
+function dbStatus(s)   { return s ? s.replace(/-/g, '_') : s; }
+
+/** Badge HTML for a slot status. */
+function statusBadge(rawStatus) {
+  const s = normStatus(rawStatus);
+  const LABELS = {
+    open: 'Open', claimed: 'Claimed', confirmed: 'Confirmed',
+    'needs-cover': 'Needs Cover', 'cover-requested': 'Cover Req.'
+  };
+  return `<span class="badge badge-${esc(s)}">${LABELS[s] || esc(s)}</span>`;
+}
+
+
+
+// ════════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════════
+
+let _toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+
+// ════════════════════════════════════════════════════════════
+// NOTIFICATIONS  (persisted in Supabase, in-app only — no push/email)
+// ════════════════════════════════════════════════════════════
+
+// Notification types, grouped by who receives them. Each type can be
+// toggled on/off independently per recipient via `notification_preferences`.
+const NOTIF_TYPES = {
+  manager: {
+    volunteer_joined:        { icon: '🙋', label: 'A volunteer joins your team' },
+    role_accepted:           { icon: '✅', label: 'Someone accepts a role' },
+    cover_requested:         { icon: '⚠️', label: 'Someone requests cover' },
+    unfilled_slots_reminder: { icon: '⏰', label: 'An event is coming up with unfilled slots' }
+  },
+  volunteer: {
+    new_event:      { icon: '📅', label: 'A new event is posted' },
+    event_updated:  { icon: '✏️', label: 'Event details change' },
+    role_confirmed: { icon: '✅', label: 'Your role is confirmed' },
+    role_assigned:  { icon: '📌', label: 'A manager assigns you to a role' },
+    cover_filled:   { icon: '🙌', label: 'Someone fills your cover request' },
+    manager_message:{ icon: '✉️', label: 'Your manager sends a team message' },
+    event_reminder: { icon: '⏰', label: 'Reminder before your event (48h & 24h out)' }
+  }
+};
+const NOTIF_ICON_MAP = Object.assign({}, NOTIF_TYPES.manager, NOTIF_TYPES.volunteer);
+
+function currentRecipient() {
+  return state.isManager
+    ? { type: 'manager', id: state.team?.id || null }
+    : { type: 'volunteer', id: state.volunteerId || null };
+}
+
+/**
+ * Inserts a notification for a specific recipient, unless that recipient
+ * has turned this notification type off. Silently no-ops if the recipient
+ * is unknown or a deduped reminder was already sent (dedupeKey).
+ */
+async function notify(recipientType, recipientId, type, message, opts = {}) {
+  if (!recipientId) return;
+  const pref = await maybeOne(db.from('notification_preferences')
+    .select('enabled')
+    .eq('recipient_type', recipientType)
+    .eq('recipient_id', recipientId)
+    .eq('notification_type', type));
+  if (pref && pref.enabled === false) return; // opted out
+
+  const row = {
+    team_id:        state.team?.id || null,
+    recipient_type: recipientType,
+    recipient_id:   recipientId,
+    type, message,
+    event_id:       opts.eventId    || null,
+    role_slot_id:   opts.roleSlotId || null
+  };
+  if (opts.dedupeKey) row.dedupe_key = opts.dedupeKey;
+
+  const { error } = await db.from('notifications').insert(row);
+  // 23505 = unique violation on dedupe_key — reminder already sent, ignore.
+  if (error && error.code !== '23505') console.error('notify() failed:', error);
+}
+
+/** Notifies every volunteer currently on the team. */
+async function notifyAllTeamVolunteers(type, message, opts = {}) {
+  const { data } = await db.from('volunteer_teams').select('volunteer_id').eq('team_id', state.team?.id);
+  const volIds = (data || []).map(r => r.volunteer_id);
+  await Promise.all(volIds.map(id => notify('volunteer', id, type, message, opts)));
+}
+
+/** Notifies volunteers with an active claim on the given event's slots. */
+async function notifyEventVolunteers(eventId, type, message, opts = {}) {
+  const { data } = await db.from('role_slots')
+    .select('claims(volunteer_id, status)')
+    .eq('event_id', eventId);
+  const volIds = new Set();
+  (data || []).forEach(s => (s.claims || []).forEach(c => {
+    if (c.status === 'active') volIds.add(c.volunteer_id);
+  }));
+  await Promise.all([...volIds].map(id => notify('volunteer', id, type, message, { ...opts, eventId })));
+}
+
+async function markAllRead() {
+  const r = currentRecipient();
+  if (!r.id) return;
+  await db.from('notifications').update({ read: true })
+    .eq('recipient_type', r.type).eq('recipient_id', r.id).eq('read', false);
+  await renderNotifications();
+}
+
+function toggleNotifPanel() {
+  const panel   = document.getElementById('notif-panel');
+  const overlay = document.getElementById('notif-overlay');
+  const isOpen  = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  if (!isOpen) renderNotifications();
+}
+
+async function renderNotifications() {
+  const r = currentRecipient();
+  const badge = document.getElementById('notif-badge');
+  if (!r.id) { if (badge) badge.style.display = 'none'; return; }
+
+  const { data: notifs, error } = await db.from('notifications')
+    .select('*')
+    .eq('recipient_type', r.type)
+    .eq('recipient_id', r.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) { console.error(error); return; }
+  state.notifications = notifs || [];
+
+  const unread = state.notifications.filter(n => !n.read).length;
+  if (badge) {
+    badge.textContent   = unread > 99 ? '99+' : unread;
+    badge.style.display = unread > 0 ? 'flex' : 'none';
+  }
+
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  if (state.notifications.length === 0) {
+    list.innerHTML = `<div class="notif-empty">No notifications yet.</div>`;
+    return;
+  }
+  list.innerHTML = state.notifications.map(n => `
+    <div class="notif-item ${n.read ? '' : 'unread'}" onclick="markNotifRead(${n.id})">
+      <div class="notif-item-inner">
+        ${!n.read ? '<div class="notif-unread-dot"></div>' : '<div style="width:7px;flex-shrink:0;"></div>'}
+        <span class="notif-icon">${(NOTIF_ICON_MAP[n.type] || {}).icon || '📌'}</span>
+        <div>
+          <div class="notif-item-msg">${n.message}</div>
+          <div class="notif-item-time">${fmtTimeAgo(new Date(n.created_at))}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function markNotifRead(id) {
+  const notif = state.notifications.find(n => n.id === id);
+  await db.from('notifications').update({ read: true }).eq('id', id);
+  await renderNotifications();
+  if (notif && notif.type === 'manager_message') openNotifDetail(notif);
+}
+
+function openNotifDetail(notif) {
+  document.getElementById('notif-detail-title').textContent = 'Team Message';
+  document.getElementById('notif-detail-body').innerHTML = notif.message;
+  document.getElementById('notif-detail-time').textContent = fmtTimeAgo(new Date(notif.created_at));
+  document.getElementById('notif-detail-overlay').classList.add('open');
+}
+
+function closeNotifDetail() {
+  document.getElementById('notif-detail-overlay').classList.remove('open');
+}
+
+function fmtTimeAgo(date) {
+  const secs = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (secs < 10)   return 'just now';
+  if (secs < 60)   return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
+}
+
+// ── Notification preferences panel ────────────────────────
+
+function toggleNotifSettingsPanel() {
+  const panel   = document.getElementById('notif-settings-panel');
+  const overlay = document.getElementById('notif-settings-overlay');
+  const isOpen  = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  if (!isOpen) renderNotifSettings();
+}
+
+async function renderNotifSettings() {
+  const r     = currentRecipient();
+  const types = state.isManager ? NOTIF_TYPES.manager : NOTIF_TYPES.volunteer;
+  const container = document.getElementById('notif-settings-list');
+  if (!container || !r.id) return;
+
+  const { data: prefs } = await db.from('notification_preferences')
+    .select('notification_type, enabled')
+    .eq('recipient_type', r.type).eq('recipient_id', r.id);
+  const prefMap = {};
+  (prefs || []).forEach(p => prefMap[p.notification_type] = p.enabled);
+
+  let html = '';
+  if (state.isManager) {
+    html += `
+      <div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label">Remind me when an event is unfilled and starting within…</label>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <input id="unfilled-reminder-hours" type="number" min="1" max="168" class="form-input" style="width:80px;"
+                 value="${state.team?.unfilled_slots_reminder_hours ?? 24}" onchange="saveReminderThreshold(this.value)">
+          <span style="font-size:12px; color:var(--gray-500);">hours</span>
+        </div>
+      </div>`;
+  }
+
+  html += Object.entries(types).map(([type, meta]) => {
+    const on = prefMap[type] !== false; // no row = enabled by default
+    return `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--gray-100);">
+        <span style="font-size:13px; color:var(--gray-800);">${meta.icon} ${esc(meta.label)}</span>
+        <button class="elig-chip ${on ? 'elig-chip-on' : 'elig-chip-off'}"
+                onclick="toggleNotifPreference('${type}', ${on})">${on ? 'On' : 'Off'}</button>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = html;
+}
+
+async function toggleNotifPreference(type, currentlyOn) {
+  const r = currentRecipient();
+  if (!r.id) return;
+  await run(async () => {
+    const { error } = await db.from('notification_preferences').upsert({
+      recipient_type: r.type, recipient_id: r.id,
+      notification_type: type, enabled: !currentlyOn
+    }, { onConflict: 'recipient_type,recipient_id,notification_type' });
+    if (error) throw error;
+    await renderNotifSettings();
+  });
+}
+
+async function saveReminderThreshold(value) {
+  const hours = Math.max(1, parseInt(value, 10) || 24);
+  await run(async () => {
+    const { error } = await db.from('team').update({ unfilled_slots_reminder_hours: hours }).eq('id', state.team.id);
+    if (error) throw error;
+    state.team.unfilled_slots_reminder_hours = hours;
+    showToast('Reminder threshold saved.');
+  });
+}
+
+// ── Manager → all volunteers broadcast message ─────────────
+
+function toggleMessagePanel() {
+  const panel   = document.getElementById('message-panel');
+  const overlay = document.getElementById('message-overlay');
+  const isOpen  = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  if (!isOpen) document.getElementById('message-team-text').value = '';
+}
+
+async function sendTeamMessage() {
+  const text = document.getElementById('message-team-text').value.trim();
+  if (!text) { showToast('Write a message first.'); return; }
+  await run(async () => {
+    await notifyAllTeamVolunteers('manager_message',
+      `<strong>Message from your manager:</strong> ${esc(text)}`);
+    toggleMessagePanel();
+    showToast('Message sent to your team.');
+  });
+}
+
+// ── Time-based reminders ───────────────────────────────────
+// Checked on login and every few minutes while the app is open (in-app
+// only — there's no push/email, so these only surface while someone
+// actually has the app open).
+async function checkTimeBasedNotifications() {
+  if (!state.team?.id) return;
+  const now = new Date();
+
+  if (state.isManager) {
+    const thresholdHours = state.team.unfilled_slots_reminder_hours ?? 24;
+    const { data: events } = await db.from('events')
+      .select('id, date, time, location, role_slots(status)')
+      .eq('team_id', state.team.id)
+      .gte('date', now.toISOString().split('T')[0]);
+    for (const ev of (events || [])) {
+      const evDateTime = new Date(`${ev.date}T${ev.time || '00:00'}`);
+      const hoursUntil  = (evDateTime - now) / 3600000;
+      if (hoursUntil <= 0 || hoursUntil > thresholdHours) continue;
+      const hasUnfilled = (ev.role_slots || []).some(s => {
+        const st = normStatus(s.status);
+        return st === 'open' || st === 'needs-cover' || st === 'cover-requested';
+      });
+      if (!hasUnfilled) continue;
+      await notify('manager', state.team.id, 'unfilled_slots_reminder',
+        `<strong>${fmtDate(ev.date)}</strong> at ${fmtTime(ev.time)} is coming up soon and still has unfilled slots.`,
+        { eventId: ev.id, dedupeKey: `unfilled:${ev.id}` });
+    }
+  } else if (state.volunteerId) {
+    const { data: events } = await db.from('events')
+      .select('id, date, time, role_slots(claims(volunteer_id, status))')
+      .eq('team_id', state.team.id)
+      .gte('date', now.toISOString().split('T')[0]);
+    for (const ev of (events || [])) {
+      const evDateTime = new Date(`${ev.date}T${ev.time || '00:00'}`);
+      const hoursUntil  = (evDateTime - now) / 3600000;
+      if (hoursUntil <= 0) continue;
+      const amRostered = (ev.role_slots || []).some(s =>
+        (s.claims || []).some(c => c.volunteer_id === state.volunteerId && c.status === 'active'));
+      if (!amRostered) continue;
+
+      if (hoursUntil <= 48 && hoursUntil > 24) {
+        await notify('volunteer', state.volunteerId, 'event_reminder',
+          `You're rostered on for <strong>${fmtDate(ev.date)}</strong> at ${fmtTime(ev.time)} — about 48 hours away.`,
+          { eventId: ev.id, dedupeKey: `reminder48:${ev.id}:${state.volunteerId}` });
+      }
+      if (hoursUntil <= 24) {
+        await notify('volunteer', state.volunteerId, 'event_reminder',
+          `You're rostered on for <strong>${fmtDate(ev.date)}</strong> at ${fmtTime(ev.time)} — about 24 hours away.`,
+          { eventId: ev.id, dedupeKey: `reminder24:${ev.id}:${state.volunteerId}` });
+      }
+    }
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════
+// EVENT TYPE (TEMPLATE) ACTIONS
+// ════════════════════════════════════════════════════════════
+
+async function newTemplate() {
+  await flushTemplateNameSave();
+  await run(async () => {
+    const { data, error } = await db
+      .from('event_types')
+      .insert({ name: 'New Event Template', team_id: state.team?.id })
+      .select('id')
+      .single();
+    if (error) throw error;
+    state.selectedEventTypeId = data.id;
+    await renderTemplateList();
+    await renderTemplateEditor();
+    await renderTemplateSelect();
+    document.getElementById('tpl-name').focus();
+    document.getElementById('tpl-name').select();
+  });
+}
+
+async function selectTemplate(id) {
+  await flushTemplateNameSave();
+  state.selectedEventTypeId = id;
+  await renderTemplateList();
+  await renderTemplateEditor();
+}
+
+// ── Template name autosave ──────────────────────────────────
+// Previously the name only wrote to the DB when the "Save" button was
+// clicked. Any other action that re-renders the editor from the DB
+// (adding/removing a role, toggling restriction, switching templates)
+// would silently discard an unsaved, just-typed name. Now every
+// keystroke queues a debounced save, and any action that's about to
+// re-fetch from the DB flushes that pending save first so it's never lost.
+let _pendingTplNameSave = null; // { id, name }
+let _tplNameSaveTimer   = null;
+
+function saveTemplateName() {
+  const id   = state.selectedEventTypeId;
+  const name = document.getElementById('tpl-name').value;
+  document.getElementById('editor-title').textContent = `Editing: ${name}`;
+  if (!id) return;
+  _pendingTplNameSave = { id, name: name.trim() };
+  clearTimeout(_tplNameSaveTimer);
+  _tplNameSaveTimer = setTimeout(flushTemplateNameSave, 600);
+}
+
+async function flushTemplateNameSave() {
+  clearTimeout(_tplNameSaveTimer);
+  if (!_pendingTplNameSave || !_pendingTplNameSave.name) { _pendingTplNameSave = null; return; }
+  const { id, name } = _pendingTplNameSave;
+  _pendingTplNameSave = null;
+  const { error } = await db.from('event_types').update({ name }).eq('id', id);
+  if (error) { console.error('Template name autosave failed:', error); return; }
+  await renderTemplateList();
+  await renderTemplateSelect();
+}
+
+async function saveAndCloseTemplate() {
+  await flushTemplateNameSave();
+  await run(async () => {
+    const id   = state.selectedEventTypeId;
+    const name = document.getElementById('tpl-name').value.trim();
+    if (!id || !name) return;
+    const { error } = await db.from('event_types').update({ name }).eq('id', id);
+    if (error) throw error;
+    state.selectedEventTypeId = null;
+    await renderTemplateList();
+    await renderTemplateEditor();
+    await renderTemplateSelect();
+    showToast(`Event template "${name}" saved.`);
+  });
+}
+
+async function deleteTemplate() {
+  await flushTemplateNameSave();
+  const id = state.selectedEventTypeId;
+  if (!id) return;
+  const { data } = await db.from('event_types').select('name').eq('id', id).single();
+  const name = data?.name || 'this event template';
+  if (!confirm(`Delete event template "${name}"?\n\nAlready-created events are not affected.`)) return;
+  await run(async () => {
+    const { error } = await db.from('event_types').delete().eq('id', id);
+    if (error) throw error;
+    state.selectedEventTypeId = null;
+    await renderTemplateList();
+    await renderTemplateEditor();
+    await renderTemplateSelect();
+    showToast('Event template deleted.');
+  });
+}
+
+async function addRole() {
+  await flushTemplateNameSave();
+  const id       = state.selectedEventTypeId;
+  const roleName = document.getElementById('new-role-name').value.trim();
+  const count    = Math.max(1, parseInt(document.getElementById('new-role-count').value, 10) || 1);
+  if (!id)       { showToast('Select an event template first.'); return; }
+  if (!roleName) { showToast('Enter a role name first.'); return; }
+  await run(async () => {
+    const { error } = await db.from('role_templates').insert({
+      event_type_id: id, role_name: roleName, quantity_needed: count
+    });
+    if (error) throw error;
+    document.getElementById('new-role-name').value  = '';
+    document.getElementById('new-role-count').value = '1';
+    document.getElementById('new-role-name').focus();
+    await renderTemplateEditor();
+  });
+}
+
+// NOTE: removeRole takes the DB row id of the role_template (not an array index).
+async function removeRole(roleTemplateId) {
+  await flushTemplateNameSave();
+  await run(async () => {
+    const { error } = await db.from('role_templates').delete().eq('id', roleTemplateId);
+    if (error) throw error;
+    await renderTemplateEditor();
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════
+// EVENT ACTIONS
+// ════════════════════════════════════════════════════════════
+
+/** Builds a plain-English list of what changed between the event's old
+ *  values and the new form values, for use in the event_updated notification. */
+function describeEventChanges(oldEv, newVals) {
+  const changes = [];
+  if ((oldEv.date || '') !== (newVals.date || '')) {
+    changes.push(`the date (${oldEv.date ? fmtDate(oldEv.date) : '—'} → ${fmtDate(newVals.date)})`);
+  }
+  if ((oldEv.time || '') !== (newVals.time || '')) {
+    changes.push(`the time (${oldEv.time ? fmtTime(oldEv.time) : '—'} → ${fmtTime(newVals.time)})`);
+  }
+  if ((oldEv.location || '') !== (newVals.location || '')) {
+    changes.push(`the location (${esc(oldEv.location || '—')} → ${esc(newVals.location || '—')})`);
+  }
+  if ((oldEv.opponent || '') !== (newVals.opponent || '')) {
+    changes.push(`the opponent (${esc(oldEv.opponent || '—')} → ${esc(newVals.opponent || '—')})`);
+  }
+  if ((oldEv.notes || '') !== (newVals.notes || '')) {
+    changes.push('the notes');
+  }
+  return changes;
+}
+
+async function addEvent() {
+  const date        = document.getElementById('ev-date').value;
+  const time        = document.getElementById('ev-time').value;
+  const location    = document.getElementById('ev-location').value.trim();
+  const opponent    = document.getElementById('ev-opponent').value.trim();
+  const notes       = document.getElementById('ev-notes').value.trim();
+  const eventTypeId = parseInt(document.getElementById('ev-template').value, 10);
+
+  // ── Edit mode ────────────────────────────────────────────
+  if (state.editingEventId) {
+    if (!date || !time || !location) {
+      showToast('Please fill in date, time, and location.');
+      return;
+    }
+    await run(async () => {
+      const evId = state.editingEventId;
+      const { data: oldEv } = await db.from('events')
+        .select('date, time, location, opponent, notes')
+        .eq('id', evId).single();
+
+      const { error } = await db.from('events').update({
+        date, time, location,
+        opponent: opponent || null,
+        notes:    notes    || null
+      }).eq('id', evId);
+      if (error) throw error;
+
+      const changes = describeEventChanges(oldEv || {}, { date, time, location, opponent, notes });
+      const changeText = changes.length > 0
+        ? `Changed ${changes.join(', ')}.`
+        : 'Event was re-saved with no visible changes.';
+      await notifyEventVolunteers(evId, 'event_updated',
+        `Your event on <strong>${fmtDate(date)}</strong> was updated — ${changeText}`);
+
+      showToast('Event updated.');
+      cancelEditEvent();
+      await renderEvents();
+    });
+    return;
+  }
+
+  // ── Create mode ──────────────────────────────────────────
+  if (!date || !time || !location || !eventTypeId) {
+    showToast('Please fill in date, time, location, and select an event template.');
+    return;
+  }
+
+  await run(async () => {
+    const { data: ev, error: evErr } = await db.from('events').insert({
+      date, time, location,
+      opponent:      opponent || null,
+      notes:         notes    || null,
+      event_type_id: eventTypeId,
+      team_id:       state.team?.id || null
+    }).select('id').single();
+    if (evErr) throw evErr;
+
+    const slotCount = await generateSlots(ev.id, eventTypeId);
+
+    await notifyAllTeamVolunteers('new_event',
+      `A new event was posted for <strong>${fmtDate(date)}</strong> at ${fmtTime(time)}, ${esc(location)}.`,
+      { eventId: ev.id });
+
+    document.getElementById('ev-date').value     = '';
+    document.getElementById('ev-location').value = '';
+    document.getElementById('ev-opponent').value = '';
+    document.getElementById('ev-notes').value    = '';
+
+    showToast(`Event added — ${slotCount} role slot${slotCount !== 1 ? 's' : ''} generated.`);
+    await renderEvents();
+  });
+}
+
+async function startEditEvent(evId) {
+  await run(async () => {
+    const { data: ev, error } = await db.from('events')
+      .select('id, date, time, location, opponent, notes, event_type_id')
+      .eq('id', evId).single();
+    if (error) throw error;
+
+    // Populate form
+    document.getElementById('ev-date').value     = ev.date     || '';
+    document.getElementById('ev-time').value     = ev.time     || '';
+    document.getElementById('ev-location').value = ev.location || '';
+    document.getElementById('ev-opponent').value = ev.opponent || '';
+    document.getElementById('ev-notes').value    = ev.notes    || '';
+
+    // Lock template (can't change it once slots exist)
+    const tmpl = document.getElementById('ev-template');
+    tmpl.value = ev.event_type_id;
+    tmpl.disabled = true;
+    document.getElementById('ev-template-locked').style.display = '';
+
+    // Switch form to edit mode
+    state.editingEventId = evId;
+    document.getElementById('ev-form-title').textContent  = 'Edit Event';
+    document.getElementById('ev-submit-btn').textContent  = 'Save Changes';
+    document.getElementById('ev-cancel-btn').style.display = '';
+
+    // Show the per-event role editor (add/remove roles for this event only)
+    document.getElementById('event-roles-editor').style.display = '';
+    await renderEventRolesEditor(evId);
+
+    // Scroll form into view
+    document.getElementById('ev-form-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+function cancelEditEvent() {
+  state.editingEventId = null;
+  document.getElementById('ev-form-title').textContent   = 'Add Event';
+  document.getElementById('ev-submit-btn').textContent   = 'Create Event + Generate Slots';
+  document.getElementById('ev-cancel-btn').style.display = 'none';
+  document.getElementById('ev-date').value               = new Date().toISOString().split('T')[0];
+  document.getElementById('ev-time').value               = '09:00';
+  document.getElementById('ev-location').value           = '';
+  document.getElementById('ev-opponent').value           = '';
+  document.getElementById('ev-notes').value               = '';
+  document.getElementById('event-roles-editor').style.display = 'none';
+  document.getElementById('event-new-role-name').value  = '';
+  document.getElementById('event-new-role-count').value = '1';
+  const tmpl = document.getElementById('ev-template');
+  tmpl.disabled = false;
+  tmpl.value    = '';
+  document.getElementById('ev-template-locked').style.display = 'none';
+}
+
+// ── Per-event role add/remove (edit mode only) ─────────────
+// Adds a template-less role_templates row (event_type_id = null) scoped
+// to just this event, so it never shows up in the shared template list
+// or affects other events created from the same template.
+
+async function renderEventRolesEditor(eventId) {
+  const container = document.getElementById('event-roles-list');
+  if (!container) return;
+  const { data: slots, error } = await db.from('role_slots')
+    .select('id, status, role_templates(role_name, restricted), claims(status, volunteers(name))')
+    .eq('event_id', eventId)
+    .order('id');
+  if (error) { console.error(error); return; }
+
+  if (!slots || slots.length === 0) {
+    container.innerHTML = `
+      <div class="role-rows">
+        <p style="font-size:12px;color:var(--gray-400);padding:10px 0;">No roles yet — add one below.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="role-rows">
+      ${slots.map(s => {
+        const st          = normStatus(s.status);
+        const activeClaim = s.claims?.find(c => c.status === 'active');
+        const roleName    = s.role_templates?.role_name || 'Role';
+        const who         = activeClaim?.volunteers?.name;
+        return `
+          <div class="role-row">
+            <span class="role-row-name">${esc(roleName)}${who ? ` — ${esc(who)}` : ''}</span>
+            ${statusBadge(st)}
+            <button class="btn btn-ghost btn-xs" onclick="removeEventRoleSlot(${s.id})" title="Remove from this event">✕</button>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+async function addRoleToEvent() {
+  const eventId = state.editingEventId;
+  if (!eventId) return;
+  const name  = document.getElementById('event-new-role-name').value.trim();
+  const count = Math.max(1, parseInt(document.getElementById('event-new-role-count').value, 10) || 1);
+  if (!name) { showToast('Enter a role name first.'); return; }
+
+  await run(async () => {
+    // A role_templates row with event_type_id = null is scoped to this
+    // event only — it won't appear in the Event Templates list or affect
+    // any other event.
+    const { data: tpl, error: tplErr } = await db.from('role_templates')
+      .insert({ role_name: name, quantity_needed: count, event_type_id: null })
+      .select('id').single();
+    if (tplErr) throw tplErr;
+
+    const newSlots = Array.from({ length: count }, () => ({
+      event_id: eventId, role_template_id: tpl.id, status: 'open'
+    }));
+    const { error: slotErr } = await db.from('role_slots').insert(newSlots);
+    if (slotErr) throw slotErr;
+
+    document.getElementById('event-new-role-name').value  = '';
+    document.getElementById('event-new-role-count').value = '1';
+    await renderEventRolesEditor(eventId);
+    await renderEvents();
+    showToast(`Added ${count} "${name}" slot${count !== 1 ? 's' : ''} to this event.`);
+  });
+}
+
+async function removeEventRoleSlot(slotId) {
+  const { data: slot } = await db.from('role_slots')
+    .select('id, role_templates(role_name), claims(status, volunteers(name))')
+    .eq('id', slotId).single();
+  const activeClaim = slot?.claims?.find(c => c.status === 'active');
+  const roleName    = slot?.role_templates?.role_name || 'this role';
+  const warning      = activeClaim?.volunteers?.name
+    ? ` ${activeClaim.volunteers.name} is currently assigned and will be removed too.`
+    : '';
+  if (!confirm(`Remove "${roleName}" from this event?${warning}`)) return;
+
+  await run(async () => {
+    const { error } = await db.from('role_slots').delete().eq('id', slotId);
+    if (error) throw error;
+    await renderEventRolesEditor(state.editingEventId);
+    await renderEvents();
+    showToast('Role removed from event.');
+  });
+}
+
+async function deleteEvent(evId) {
+  if (!confirm('Delete this event? All slots and claims will also be removed.')) return;
+  await run(async () => {
+    const { error } = await db.from('events').delete().eq('id', evId);
+    if (error) throw error;
+    showToast('Event deleted.');
+    await renderEvents();
+    await renderVolunteerView();
+  });
+}
+
+// Reads role_templates for the given event type and inserts one
+// role_slot per needed count. Returns the total slots created.
+async function generateSlots(eventId, eventTypeId) {
+  const { data: templates, error } = await db
+    .from('role_templates')
+    .select('id, quantity_needed')
+    .eq('event_type_id', eventTypeId);
+  if (error) throw error;
+
+  const slots = [];
+  for (const tpl of (templates || [])) {
+    for (let i = 0; i < tpl.quantity_needed; i++) {
+      slots.push({ event_id: eventId, role_template_id: tpl.id, status: 'open' });
+    }
+  }
+  if (slots.length > 0) {
+    const { error: slotErr } = await db.from('role_slots').insert(slots);
+    if (slotErr) throw slotErr;
+  }
+  return slots.length;
+}
+
+
+// ════════════════════════════════════════════════════════════
+// VOLUNTEER IDENTITY
+// ════════════════════════════════════════════════════════════
+
+// ── Team helpers ──────────────────────────────────────────
+
+async function fetchTeam() {
+  // Use limit(1) + order so we handle 0 or many rows without maybeSingle() PGRST116 issues.
+  const { data, error } = await db.from('team').select('*').order('id', { ascending: false }).limit(1);
+  if (error) throw error;
+  const team = (data && data.length > 0) ? data[0] : null;
+  state.team = team;
+  return team;
+}
+
+function generateCode() {
+  // Avoids confusable characters (0/O, 1/I/L)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// SIGN UP / LOG IN + ROLE CHOICE
+// One Supabase Auth account (one email, one password) is the login for
+// everything. Signing up only creates that bare identity — right after
+// signup, and after every future login, the person lands on the
+// role-choice screen and picks Manager or Volunteer. A single account
+// can end up linked to a `team` row, a `volunteers` row, or both (e.g.
+// someone who manages their own team but also volunteers for their
+// kid's team elsewhere) — `team.auth_id` and `volunteers.auth_id` are
+// independent, so there's no schema conflict in linking one login to
+// both. There's deliberately no in-app switcher beyond the role-choice
+// screen — switching "hats" means logging out and back in.
+// ════════════════════════════════════════════════════════════
+
+async function unifiedLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('login-password').value;
+  if (!email) { showToast('Enter your email address.'); return; }
+  if (!pass)  { showToast('Enter your password.'); return; }
+  await run(async () => {
+    const { data: authData, error: authErr } = await db.auth.signInWithPassword({ email, password: pass });
+    if (authErr) { showToast('Incorrect email or password.'); return; }
+    state.authUserId = authData.user.id;
+    state._authName  = authData.user.user_metadata?.full_name || '';
+    await showRoleChoice();
+  });
+}
+
+async function signUpAccount() {
+  const name  = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('signup-password').value;
+  const pass2 = document.getElementById('signup-password2').value;
+  if (!name)              { showToast('Enter your name.'); return; }
+  if (!email || !email.includes('@')) { showToast('Enter a valid email address.'); return; }
+  if (!pass)              { showToast('Enter a password.'); return; }
+  if (pass.length < 6)    { showToast('Password must be at least 6 characters.'); return; }
+  if (pass !== pass2)     { showToast("Passwords don't match."); return; }
+
+  await run(async () => {
+    const { data: authData, error: authErr } = await db.auth.signUp({
+      email, password: pass, options: { data: { full_name: name } }
+    });
+    if (authErr) {
+      if (authErr.message?.toLowerCase().includes('already registered')) {
+        showToast('That email already has an account — log in instead.');
+        document.getElementById('login-email').value = email;
+        showPageDirect('login');
+        return;
+      }
+      throw authErr;
+    }
+    if (!authData.user) {
+      showToast('Check your email to confirm your account, then log in.');
+      showPageDirect('login');
+      return;
+    }
+    state.authUserId = authData.user.id;
+    state._authName  = name;
+    await showRoleChoice();
+  });
+}
+
+/** Always shown after login, signup, and session restore. Looks up
+ *  whether this auth account already has a team and/or a volunteer
+ *  profile, and updates the Manager tile to show the team name (or an
+ *  invite to create one). */
+async function showRoleChoice() {
+  await run(async () => {
+    const team      = await maybeOne(db.from('team').select('*').eq('auth_id', state.authUserId));
+    const volunteer = await maybeOne(db.from('volunteers').select('*').eq('auth_id', state.authUserId));
+    state.team            = team || null;
+    state._authVolunteer  = volunteer || null;
+
+    const sub = document.getElementById('role-choice-manager-sub');
+    if (sub) sub.textContent = team ? team.name : 'Create a Team';
+
+    showPageDirect('role-choice');
+  });
+}
+
+async function clickManagerTile() {
+  if (state.team) {
+    await run(async () => { await enterManagerMode(state.team); });
+  } else {
+    showPageDirect('setup');
+  }
+}
+
+async function clickVolunteerTile() {
+  const volunteer = state._authVolunteer;
+  if (volunteer) {
+    state.volunteerId   = volunteer.id;
+    state.volunteerName = volunteer.name;
+    await run(async () => {
+      await loadVolunteerTeams();
+      if (state.volunteerTeams.length === 0) {
+        showJoinTeam();
+      } else {
+        state.team = state.volunteerTeams[0];
+        await enterVolunteerMode();
+      }
+    });
+  } else {
+    // First time setting up as a volunteer on this account — collect a
+    // team code (and optional phone) before creating the volunteer profile.
+    showJoinTeam();
+  }
+}
+
+/** Shared cleanup for logging out of either role. */
+async function logoutEverything() {
+  await db.auth.signOut();
+  state.team             = null;
+  state.isManager        = false;
+  state.volunteerId      = null;
+  state.volunteerName    = '';
+  state.volunteerTeams   = [];
+  state.eligibleRoleIds  = new Set();
+  state.authUserId       = null;
+  state._authName        = '';
+  state._authVolunteer   = null;
+  document.getElementById('manager-header-extras').style.display = 'none';
+  document.getElementById('volunteer-header-extras').style.display = 'none';
+  document.getElementById('refresh-btn').style.display = 'none';
+  document.getElementById('notif-bell-wrap').style.display = 'none';
+  document.getElementById('notif-settings-btn-wrap').style.display = 'none';
+  document.getElementById('vol-list-btn-wrap').style.display = 'none';
+  document.getElementById('message-team-btn-wrap').style.display = 'none';
+  const bar = document.getElementById('vol-identity-bar');
+  if (bar) bar.style.display = 'none';
+  showPageDirect('landing');
+}
+
+// ── Forgot / reset password ────────────────────────────────
+
+async function sendPasswordReset() {
+  const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+  if (!email || !email.includes('@')) { showToast('Enter a valid email address.'); return; }
+  await run(async () => {
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.href.split('#')[0].split('?')[0]
+    });
+    if (error) throw error;
+    // Generic message regardless of whether the email exists, so we don't
+    // reveal which addresses have accounts.
+    showToast("If an account exists for that email, we've sent a reset link.");
+    showPageDirect('login');
+  });
+}
+
+async function submitNewPassword() {
+  const pass  = document.getElementById('reset-password').value;
+  const pass2 = document.getElementById('reset-password2').value;
+  if (!pass || pass.length < 6) { showToast('Password must be at least 6 characters.'); return; }
+  if (pass !== pass2)           { showToast("Passwords don't match."); return; }
+  await run(async () => {
+    const { error } = await db.auth.updateUser({ password: pass });
+    if (error) throw error;
+    showToast('Password updated!');
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+      state.authUserId = session.user.id;
+      state._authName  = session.user.user_metadata?.full_name || '';
+      await showRoleChoice();
+    } else {
+      showPageDirect('login');
+    }
+  });
+}
+
+// ── Manager team setup (already authenticated — just needs a team name) ──
+
+async function setupTeam() {
+  const name = document.getElementById('setup-team-name').value.trim();
+  if (!name) { showToast('Enter a team name.'); return; }
+
+  await run(async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { showToast('Your session expired — log in again.'); showPageDirect('login'); return; }
+
+    const code = generateCode();
+    const { data, error } = await db.from('team')
+      .insert({ name, email: session.user.email, join_code: code, auth_id: state.authUserId })
+      .select().single();
+    if (error) throw error;
+    state.team = data;
+    await enterManagerMode(data);
+    showToast(`Team created! Your join code is: ${code}`);
+  });
+}
+
+async function managerLogout() {
+  if (!confirm('Log out of manager view?')) return;
+  await logoutEverything();
+}
+
+async function volunteerLogout() {
+  await logoutEverything();
+}
+
+// ── Volunteer team management ─────────────────────────────
+
+async function loadVolunteerTeams() {
+  const { data } = await db
+    .from('volunteer_teams')
+    .select('team:team_id(id, name, join_code, email)')
+    .eq('volunteer_id', state.volunteerId)
+    .order('joined_at', { ascending: true });
+  state.volunteerTeams = (data || []).map(r => r.team).filter(Boolean);
+}
+
+/** Updates the manager-contact line in the volunteer identity bar. */
+function renderManagerContact() {
+  const el = document.getElementById('vol-manager-contact');
+  if (!el) return;
+  const email = state.team?.email;
+  el.textContent = email || '—';
+  el.href = email ? `mailto:${email}` : '#';
+}
+
+function renderTeamSwitcher() {
+  const sel = document.getElementById('team-switcher');
+  if (!sel) return;
+  sel.innerHTML = state.volunteerTeams.map(t =>
+    `<option value="${t.id}" ${t.id === state.team?.id ? 'selected' : ''}>${esc(t.name)}</option>`
+  ).join('');
+}
+
+async function switchTeam(teamId) {
+  const team = state.volunteerTeams.find(t => t.id === parseInt(teamId));
+  if (!team || team.id === state.team?.id) return;
+  state.team = team;
+  renderManagerContact();
+  await run(async () => {
+    await loadVolunteerEligibility();
+    await renderVolunteerView();
+  });
+}
+
+async function joinTeamWithCode() {
+  const code  = document.getElementById('vol-join-code').value.trim().toUpperCase();
+  const phone = document.getElementById('vol-join-phone')?.value.trim() || '';
+  if (!code) { showToast('Enter the team code.'); return; }
+  await run(async () => {
+    const team = await maybeOne(db.from('team').select('*').eq('join_code', code));
+    if (!team) { showToast('Invalid team code — double-check with your manager.'); return; }
+
+    // First time this auth account is acting as a volunteer — create the
+    // volunteer profile now that we know they're joining a real team.
+    if (!state.volunteerId) {
+      const { data: { session } } = await db.auth.getSession();
+      const email = session.user.email;
+      const row = { name: state._authName || email, email, auth_id: state.authUserId };
+      if (phone) row.phone = phone;
+      const { data: created, error: vErr } = await db.from('volunteers').insert(row).select().single();
+      if (vErr) throw vErr;
+      state.volunteerId    = created.id;
+      state.volunteerName  = created.name;
+      state._authVolunteer = created;
+    }
+
+    const { error } = await db.from('volunteer_teams').upsert(
+      { volunteer_id: state.volunteerId, team_id: team.id },
+      { onConflict: 'volunteer_id,team_id' }
+    );
+    if (error) throw error;
+
+    await notify('manager', team.id, 'volunteer_joined',
+      `<strong>${esc(state.volunteerName)}</strong> joined your team.`);
+
+    await loadVolunteerTeams();
+    state.team = team;
+    document.getElementById('vol-join-code').value = '';
+    const phoneInput = document.getElementById('vol-join-phone');
+    if (phoneInput) phoneInput.value = '';
+    await enterVolunteerMode();
+    showToast(`Joined ${team.name}!`);
+  });
+}
+
+/** Shown both for a first-time volunteer setup (via the role-choice
+ *  screen) and for joining an additional team from within the app (the
+ *  header's "+ Team" button). Only the first-time case needs the phone
+ *  field, the skip option, or a "back to role choice" — a returning
+ *  volunteer already has a profile and just wants to add a team code. */
+function showJoinTeam() {
+  const phoneGroup = document.getElementById('vol-join-phone-group');
+  const skipBtn    = document.getElementById('vol-join-skip-btn');
+  const isFirstTime = !state.volunteerId;
+  state._joinTeamReturnTo = isFirstTime ? 'role-choice' : 'volunteer';
+  if (phoneGroup) phoneGroup.style.display = isFirstTime ? '' : 'none';
+  if (skipBtn)    skipBtn.style.display = isFirstTime ? '' : 'none';
+  document.getElementById('vol-join-code').value = '';
+  showPageDirect('vol-join-team');
+}
+
+function backFromJoinTeam() {
+  if (state._joinTeamReturnTo === 'volunteer') { showPageDirect('volunteer'); }
+  else { showRoleChoice(); }
+}
+
+function skipToVolunteerView() {
+  showPageDirect('volunteer');
+}
+
+function copyVolunteerLink() {
+  const base = window.location.href.replace(/#.*$/, '').replace(/\?.*$/, '');
+  const link = `${base}?code=${state.team?.join_code || ''}`;
+  navigator.clipboard.writeText(link)
+    .then(() => showToast('Volunteer link copied to clipboard!'))
+    .catch(() => showToast('Copy failed — link: ' + link));
+}
+
+// ── Mode transitions ──────────────────────────────────────
+
+async function enterManagerMode(team) {
+  state.isManager = true;
+  // Update header
+  document.getElementById('manager-header-extras').style.display = 'flex';
+  document.getElementById('notif-bell-wrap').style.display = '';
+  document.getElementById('notif-settings-btn-wrap').style.display = '';
+  document.getElementById('vol-list-btn-wrap').style.display = '';
+  document.getElementById('message-team-btn-wrap').style.display = '';
+  document.getElementById('refresh-btn').style.display = '';
+  document.getElementById('volunteer-header-extras').style.display = 'none';
+  document.getElementById('header-team-name').textContent = team.name;
+  document.getElementById('header-join-code').textContent = `Team Code: ${team.join_code}`;
+  // Default date/time for the add-event form
+  document.getElementById('ev-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ev-time').value = '09:00';
+  showPageDirect('manager');
+  await run(async () => {
+    await Promise.all([renderTemplateList(), renderTemplateSelect(), renderEvents()]);
+    await checkTimeBasedNotifications();
+    await renderNotifications();
+  });
+}
+
+async function enterVolunteerMode() {
+  // Update header
+  document.getElementById('volunteer-header-extras').style.display = 'flex';
+  document.getElementById('manager-header-extras').style.display = 'none';
+  document.getElementById('notif-bell-wrap').style.display = '';
+  document.getElementById('notif-settings-btn-wrap').style.display = '';
+  document.getElementById('vol-list-btn-wrap').style.display = 'none';
+  document.getElementById('message-team-btn-wrap').style.display = 'none';
+  document.getElementById('refresh-btn').style.display = '';
+  document.getElementById('header-vol-name').textContent = state.volunteerName;
+  renderTeamSwitcher();
+  // Show name in body identity bar too
+  const bar = document.getElementById('vol-identity-bar');
+  if (bar) bar.style.display = '';
+  const nameEl = document.getElementById('vol-name-bar');
+  if (nameEl) nameEl.textContent = state.volunteerName;
+  renderManagerContact();
+  showPageDirect('volunteer');
+  await loadVolunteerEligibility();
+  await renderVolunteerView();
+  await run(async () => {
+    await checkTimeBasedNotifications();
+    await renderNotifications();
+  });
+}
+
+// ── Volunteer DB identity ─────────────────────────────────
+
+// Looks up a volunteer by name; creates if not found.
+// Stores the id in state.volunteerId.
+async function resolveVolunteer(name, phone, email) {
+  const existing = await maybeOne(db.from('volunteers').select('id, team_id').eq('name', name));
+  if (existing) {
+    // Backfill team_id if the volunteer pre-dates the column
+    if (state.team?.id && !existing.team_id) {
+      await db.from('volunteers').update({ team_id: state.team.id }).eq('id', existing.id);
+    }
+    state.volunteerId = existing.id;
+    return existing.id;
+  }
+
+  const row = { name, team_id: state.team?.id || null };
+  if (phone) row.phone = phone;
+  if (email) row.email = email;
+  const { data: created, error } = await db
+    .from('volunteers').insert(row).select('id').single();
+  if (error) throw error;
+  state.volunteerId = created.id;
+  return created.id;
+}
+
+
+// ════════════════════════════════════════════════════════════
+// MANAGER ACTIONS
+// ════════════════════════════════════════════════════════════
+
+async function confirmSlot(slotId) {
+  await run(async () => {
+    const { data: slot, error } = await db
+      .from('role_slots')
+      .select('id, status, event_id, role_templates(role_name), claims(id, status, volunteer_id, volunteers(name))')
+      .eq('id', slotId).single();
+    if (error) throw error;
+    if (normStatus(slot.status) !== 'claimed') return;
+
+    const activeClaim = slot.claims?.find(c => c.status === 'active');
+    const volName     = activeClaim?.volunteers?.name || 'volunteer';
+    const roleName    = slot.role_templates?.role_name || '';
+
+    const { error: updErr } = await db
+      .from('role_slots').update({ status: 'confirmed' }).eq('id', slotId);
+    if (updErr) throw updErr;
+
+    const { data: ev } = await db.from('events').select('date').eq('id', slot.event_id).single();
+    if (activeClaim?.volunteer_id) {
+      await notify('volunteer', activeClaim.volunteer_id, 'role_confirmed',
+        `Your role of <strong>${esc(roleName)}</strong> for ${ev ? fmtDate(ev.date) : 'an event'} has been confirmed.`,
+        { eventId: slot.event_id, roleSlotId: slotId });
+    }
+    await renderEvents();
+    await renderVolunteerView();
+    renderNotifications();
+    showToast(`Confirmed ${volName} for ${roleName}.`);
+  });
+}
+
+async function managerUnassign(slotId) {
+  // Fetch before confirm dialog so we know the names
+  const { data: slot } = await db
+    .from('role_slots')
+    .select('id, status, event_id, role_templates(role_name), claims(id, status, volunteers(name))')
+    .eq('id', slotId).single();
+
+  const activeClaim = slot?.claims?.find(c => c.status === 'active');
+  const volName     = activeClaim?.volunteers?.name || 'volunteer';
+  const roleName    = slot?.role_templates?.role_name || '';
+
+  if (!confirm(`Unassign ${volName} from ${roleName}?`)) return;
+
+  await run(async () => {
+    // Drop ALL non-dropped claims (active + any dangling cover_offers)
+    const { error: claimErr } = await db
+      .from('claims').update({ status: 'dropped' })
+      .eq('role_slot_id', slotId)
+      .neq('status', 'dropped');
+    if (claimErr) throw claimErr;
+
+    const { error: slotErr } = await db
+      .from('role_slots').update({ status: 'open', cover_note: null }).eq('id', slotId);
+    if (slotErr) throw slotErr;
+
+    await renderEvents();
+    await renderVolunteerView();
+    showToast(`${volName} unassigned from ${roleName}.`);
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════
+// VOLUNTEER ACTIONS
+// ════════════════════════════════════════════════════════════
+
+async function claimSlot(slotId) {
+  if (!state.volunteerId) {
+    showToast('Please join the team first to claim a slot.');
+    return;
+  }
+  await run(async () => {
+    // Re-check slot is still open (race condition guard)
+    const { data: slot, error: slotErr } = await db
+      .from('role_slots')
+      .select('id, status, event_id, role_templates(role_name)')
+      .eq('id', slotId).single();
+    if (slotErr) throw slotErr;
+    const st = normStatus(slot.status);
+    if (st !== 'open' && st !== 'needs-cover') {
+      showToast('That slot was just taken — please pick another.');
+      await renderVolunteerView();
+      return;
+    }
+
+    const { error: claimErr } = await db.from('claims').insert({
+      role_slot_id: slotId, volunteer_id: state.volunteerId, status: 'active'
+    });
+    // 23505 = unique violation on one_active_claim_per_slot index
+    if (claimErr) {
+      if (claimErr.code === '23505') {
+        showToast('That slot was just taken — please pick another.');
+        await renderVolunteerView();
+        return;
+      }
+      throw claimErr;
+    }
+
+    const { error: updErr } = await db
+      .from('role_slots').update({ status: 'claimed' }).eq('id', slotId);
+    if (updErr) throw updErr;
+
+    const roleName = slot.role_templates?.role_name || '';
+    const { data: ev } = await db.from('events').select('date').eq('id', slot.event_id).single();
+    await notify('manager', state.team?.id, 'role_accepted',
+      `<strong>${esc(state.volunteerName)}</strong> claimed <strong>${esc(roleName)}</strong> for ${ev ? fmtDate(ev.date) : 'an event'}.`,
+      { eventId: slot.event_id, roleSlotId: slotId });
+    await renderVolunteerView();
+    await renderEvents();
+    showToast(`Claimed "${roleName}" — pending manager confirmation.`);
+  });
+}
+
+// Cancel a nomination before manager confirms — reverts slot to open
+async function cancelClaim(slotId) {
+  if (!state.volunteerId) return;
+  await run(async () => {
+    const claim = await maybeOne(
+      db.from('claims')
+        .select('id')
+        .eq('role_slot_id', slotId)
+        .eq('volunteer_id', state.volunteerId)
+        .eq('status', 'active')
+    );
+    if (!claim) { showToast('Claim not found.'); return; }
+
+    await db.from('claims').update({ status: 'dropped' }).eq('id', claim.id);
+    const { error } = await db.from('role_slots').update({ status: 'open' }).eq('id', slotId);
+    if (error) throw error;
+
+    await renderVolunteerView();
+    await renderEvents();
+    showToast('Nomination cancelled — slot is open again.');
+  });
+}
+
+async function unclaimSlot(slotId) {
+  if (!state.volunteerId) return;
+  await run(async () => {
+    const claim = await maybeOne(
+      db.from('claims')
+        .select('id, role_slots(event_id, role_templates(role_name)), volunteers(name)')
+        .eq('role_slot_id', slotId)
+        .eq('volunteer_id', state.volunteerId)
+        .eq('status', 'active')
+    );
+    if (!claim) { showToast('You can only drop your own claims.'); return; }
+
+    const roleName    = claim.role_slots?.role_templates?.role_name || '';
+    const droppedName = claim.volunteers?.name || state.volunteerName;
+
+    const { error: claimUpdErr } = await db
+      .from('claims').update({ status: 'dropped' }).eq('id', claim.id);
+    if (claimUpdErr) throw claimUpdErr;
+
+    // Volunteer-initiated drop → needs_cover (signals urgency to manager)
+    const { error: slotUpdErr } = await db
+      .from('role_slots').update({ status: 'needs_cover' }).eq('id', slotId);
+    if (slotUpdErr) throw slotUpdErr;
+
+    await renderVolunteerView();
+    await renderEvents();
+    showToast(`Dropped claim for "${roleName}" — slot flagged as Needs Cover.`);
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════
+// RENDER: template list
+// ════════════════════════════════════════════════════════════
+
+async function renderTemplateList() {
+  const ul = document.getElementById('template-list');
+  const { data: eventTypes, error } = await db
+    .from('event_types')
+    .select('id, name, role_templates(id, quantity_needed)')
+    .eq('team_id', state.team?.id)
+    .order('id');
+  if (error) { console.error(error); return; }
+
+  if (!eventTypes || eventTypes.length === 0) {
+    ul.innerHTML = `<li style="padding:14px 10px;color:var(--gray-400);font-size:12px;text-align:center;">
+      No event templates yet. Click + New Event Template to add one.</li>`;
+    return;
+  }
+  ul.innerHTML = eventTypes.map(t => {
+    const roleCount  = t.role_templates?.length || 0;
+    const totalSlots = t.role_templates?.reduce((s, r) => s + (r.quantity_needed || 1), 0) || 0;
+    const selected   = t.id === state.selectedEventTypeId;
+    return `
+      <li class="template-item ${selected ? 'selected' : ''}" onclick="selectTemplate(${t.id})">
+        <div>
+          <div class="template-item-name">${esc(t.name)}</div>
+          <div class="template-item-meta">
+            ${roleCount} role type${roleCount !== 1 ? 's' : ''}
+            &nbsp;·&nbsp;
+            ${totalSlots} slot${totalSlots !== 1 ? 's' : ''} per event
+          </div>
+        </div>
+        <svg class="chevron" width="14" height="14" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      </li>`;
+  }).join('');
+}
+
+
+// ════════════════════════════════════════════════════════════
+// RENDER: template editor
+// ════════════════════════════════════════════════════════════
+
+async function renderTemplateEditor() {
+  const editor = document.getElementById('template-editor');
+  const id     = state.selectedEventTypeId;
+  if (!id) { editor.style.display = 'none'; return; }
+  editor.style.display = '';
+
+  const { data: tpl, error } = await db
+    .from('event_types')
+    .select('id, name, role_templates(id, role_name, quantity_needed, restricted)')
+    .eq('id', id).single();
+  if (error || !tpl) { editor.style.display = 'none'; return; }
+
+  document.getElementById('editor-title').textContent = `Editing: ${tpl.name}`;
+  document.getElementById('tpl-name').value           = tpl.name;
+
+  const roles   = tpl.role_templates || [];
+  const rolesEl = document.getElementById('tpl-roles');
+  if (roles.length === 0) {
+    rolesEl.innerHTML = `
+      <div class="role-rows">
+        <p style="font-size:12px;color:var(--gray-400);padding:10px 0;">
+          No roles defined yet. Add one below.</p>
+      </div>`;
+    return;
+  }
+  rolesEl.innerHTML = `
+    <div class="role-rows">
+      ${roles.map(r => `
+        <div class="role-row${r.restricted ? ' role-row-restricted' : ''}">
+          <span class="role-row-name">${r.restricted ? '🔒 ' : ''}${esc(r.role_name)}</span>
+          <span class="count-badge">${r.quantity_needed}×</span>
+          <button class="btn btn-ghost btn-xs ${r.restricted ? 'btn-lock-on' : 'btn-lock-off'}"
+            onclick="toggleRoleRestriction(${r.id}, ${!!r.restricted})"
+            title="${r.restricted ? 'Restricted (click to open to all)' : 'Open to all (click to restrict)'}">
+            ${r.restricted ? '🔒' : '🔓'}
+          </button>
+          <button class="btn btn-ghost btn-xs" onclick="removeRole(${r.id})" title="Remove">✕</button>
+        </div>`).join('')}
+    </div>`;
+}
+
+
+async function toggleRoleRestriction(roleId, isRestricted) {
+  await flushTemplateNameSave();
+  await run(async () => {
+    const { error } = await db.from('role_templates')
+      .update({ restricted: !isRestricted })
+      .eq('id', roleId);
+    if (error) throw error;
+    await renderTemplateEditor();
+    showToast(isRestricted ? 'Role open to all volunteers.' : 'Role restricted — assign eligibility in the Volunteers panel.');
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER: template <select> in create-event form
+// ════════════════════════════════════════════════════════════
+
+async function renderTemplateSelect() {
+  const sel  = document.getElementById('ev-template');
+  const prev = sel.value;
+  const { data: eventTypes } = await db.from('event_types').select('id, name')
+    .eq('team_id', state.team?.id).order('id');
+  sel.innerHTML =
+    `<option value="">Select a template…</option>` +
+    (eventTypes || [])
+      .map(t => `<option value="${t.id}" ${t.id == prev ? 'selected' : ''}>${esc(t.name)}</option>`)
+      .join('');
+}
+
+
+// ════════════════════════════════════════════════════════════
+// RENDER: events list (manager view)
+// ════════════════════════════════════════════════════════════
+
+async function renderEvents() {
+  const container = document.getElementById('events-list');
+  const { data: events, error } = await db
+    .from('events')
+    .select(`
+      id, date, time, location, opponent, notes,
+      event_types ( name ),
+      role_slots (
+        id, status, cover_note,
+        role_templates ( role_name, restricted ),
+        claims ( id, status, volunteers ( name ) )
+      )
+    `)
+    .eq('team_id', state.team?.id)
+    .order('date', { ascending: true })
+    .order('time', { ascending: true });
+  if (error) { console.error(error); return; }
+
+  if (!events || events.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h3>No events yet</h3>
+        <p>Fill in the form on the left to add your first event.</p>
+      </div>`;
+    return;
+  }
+
+  const today    = new Date().toISOString().split('T')[0];
+  const upcoming = events.filter(ev => ev.date >= today);
+  const past     = events.filter(ev => ev.date < today).reverse(); // newest-first
+
+  const buildManagerCard = (ev, isPast = false) => {
+    const slots     = (ev.role_slots || []).slice().sort((a, b) => a.id - b.id);
+    const openCount = slots.filter(s => {
+      const st = normStatus(s.status);
+      return st === 'open' || st === 'needs-cover';
+    }).length;
+
+    const rows = slots.map(s => {
+      const st             = normStatus(s.status);
+      const activeClaim    = s.claims?.find(c => c.status === 'active');
+      const offerClaim     = s.claims?.find(c => c.status === 'cover_offer');
+      const volName        = activeClaim?.volunteers?.name || null;
+      const offerVolName   = offerClaim?.volunteers?.name  || null;
+      const roleName       = s.role_templates?.role_name   || '';
+      const isRestricted   = s.role_templates?.restricted;
+
+      let actions = '';
+      if (!isPast) {
+        if (st === 'open' || st === 'needs-cover') {
+          actions = `<button class="btn btn-ghost btn-sm" onclick="showAssignDropdown(${s.id})">+ Assign</button>`;
+        } else if (st === 'claimed') {
+          actions = `
+            <button class="btn btn-secondary btn-sm" onclick="confirmSlot(${s.id})">✓ Confirm</button>
+            <button class="btn btn-ghost btn-sm"      onclick="managerUnassign(${s.id})">Unassign</button>`;
+        } else if (st === 'confirmed') {
+          actions = `<button class="btn btn-ghost btn-sm" onclick="managerUnassign(${s.id})">Unassign</button>`;
+        } else if (st === 'cover-requested') {
+          if (offerVolName) {
+            actions = `
+              <span class="slot-row-cover-info">🙋 ${esc(offerVolName)} can cover</span>
+              <button class="btn btn-secondary btn-sm" onclick="confirmCover(${s.id})">✓ Confirm</button>
+              <button class="btn btn-ghost btn-sm"     onclick="declineCoverOffer(${s.id})">✕ Decline</button>`;
+          } else {
+            actions = `<button class="btn btn-ghost btn-sm" onclick="cancelCoverRequest(${s.id})">Revert</button>`;
+          }
+        }
+      }
+
+      const displayName = st === 'cover-requested'
+        ? (volName ? `${volName} (wants cover)` : 'Unassigned')
+        : volName;
+
+      const coverNoteHtml = (st === 'cover-requested' && s.cover_note)
+        ? `<div style="grid-column:1/-1; font-size:11px; color:var(--gray-500); font-style:italic;">💬 "${esc(s.cover_note)}"</div>`
+        : '';
+
+      return `
+        <div class="slot-row row-${st}${isRestricted ? ' slot-restricted' : ''}">
+          <span class="slot-row-role">${isRestricted ? '🔒 ' : ''}${esc(roleName)}</span>
+          <span class="slot-row-vol ${displayName ? '' : 'empty'}">${displayName ? esc(displayName) : 'Unassigned'}</span>
+          ${statusBadge(st)}
+          <div class="slot-row-actions" id="slot-actions-${s.id}">${actions}</div>
+          ${coverNoteHtml}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="event-card${isPast ? ' past-event' : ''}">
+        <div class="event-card-header">
+          <div>
+            <div class="event-date-time">${fmtDate(ev.date)} &nbsp;·&nbsp; ${fmtTime(ev.time)}</div>
+            <div class="event-meta">
+              📍 ${esc(ev.location)}
+              ${ev.opponent ? ` &nbsp;·&nbsp; vs ${esc(ev.opponent)}` : ''}
+            </div>
+          </div>
+          <div class="event-right">
+            <span class="template-tag">${esc(ev.event_types?.name || '')}</span>
+            ${isPast
+              ? `<span class="open-count" style="color:var(--text-muted)">Past event</span>`
+              : `<span class="open-count">${openCount} slot${openCount !== 1 ? 's' : ''} need filling</span>`}
+            <div class="event-mgmt-actions">
+              <button class="btn btn-ghost btn-sm" onclick="startEditEvent(${ev.id})">✏️ Edit</button>
+              <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteEvent(${ev.id})">🗑 Delete</button>
+            </div>
+          </div>
+        </div>
+        ${ev.notes ? `<div class="event-notes">📝 ${esc(ev.notes)}</div>` : ''}
+        <div class="slot-list">${rows}</div>
+      </div>`;
+  };
+
+  let html = '';
+
+  if (upcoming.length === 0) {
+    html += `<div class="empty-state" style="padding:20px;">No upcoming events — add one using the form.</div>`;
+  } else {
+    html += `<div class="events-section-label">Upcoming</div>`;
+    html += upcoming.map(ev => buildManagerCard(ev, false)).join('');
+  }
+
+  if (past.length > 0) {
+    html += `
+      <div style="margin-top:8px;">
+        <button class="past-toggle-btn" onclick="togglePastSection('mgr-past', 'mgr-past-chev')">
+          <span>Past Events (${past.length})</span>
+          <span id="mgr-past-chev">▾</span>
+        </button>
+        <div id="mgr-past" class="past-events-body" style="display:none;">
+          ${past.map(ev => buildManagerCard(ev, true)).join('')}
+        </div>
+      </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+
+// ── Manager manual assign ─────────────────────────────────
+
+async function showAssignDropdown(slotId) {
+  const actionsEl = document.getElementById(`slot-actions-${slotId}`);
+  if (!actionsEl) return;
+  actionsEl.innerHTML = `<span style="font-size:12px;color:var(--gray-400)">Loading…</span>`;
+
+  const { data: vtRows, error: vtErr } = await db
+    .from('volunteer_teams').select('volunteer_id').eq('team_id', state.team?.id);
+  const volIds = (vtRows || []).map(r => r.volunteer_id);
+  const { data: volData, error } = volIds.length > 0
+    ? await db.from('volunteers').select('id, name').in('id', volIds).order('name')
+    : { data: [], error: null };
+  const vols = volData || [];
+
+  if (error || !vols || vols.length === 0) {
+    actionsEl.innerHTML = `
+      <span style="font-size:12px;color:var(--gray-400)">No volunteers yet.</span>
+      <button class="btn btn-ghost btn-sm" onclick="renderEvents()">✕</button>`;
+    return;
+  }
+
+  actionsEl.innerHTML = `
+    <div class="assign-inline">
+      <select id="assign-sel-${slotId}" class="assign-select">
+        <option value="">Pick volunteer…</option>
+        ${vols.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('')}
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="confirmAssign(${slotId})">✓</button>
+      <button class="btn btn-ghost btn-sm"     onclick="renderEvents()">✕</button>
+    </div>`;
+}
+
+async function confirmAssign(slotId) {
+  const sel = document.getElementById(`assign-sel-${slotId}`);
+  const volunteerId = sel ? parseInt(sel.value) : NaN;
+  if (!volunteerId) { showToast('Select a volunteer first.'); return; }
+
+  await run(async () => {
+    const { data: slotInfo } = await db.from('role_slots')
+      .select('event_id, role_templates(role_name)').eq('id', slotId).single();
+
+    // Drop any existing claims on this slot first
+    await db.from('claims').update({ status: 'dropped' })
+      .eq('role_slot_id', slotId)
+      .in('status', ['active', 'cover_offer']);
+
+    const { error: claimErr } = await db.from('claims').insert({
+      role_slot_id: slotId,
+      volunteer_id: volunteerId,
+      status: 'active'
+    });
+    if (claimErr) throw claimErr;
+
+    const { error: slotErr } = await db.from('role_slots')
+      .update({ status: 'claimed' })
+      .eq('id', slotId);
+    if (slotErr) throw slotErr;
+
+    const roleName = slotInfo?.role_templates?.role_name || 'a role';
+    const { data: ev } = slotInfo?.event_id
+      ? await db.from('events').select('date').eq('id', slotInfo.event_id).single()
+      : { data: null };
+    await notify('volunteer', volunteerId, 'role_assigned',
+      `You were assigned to <strong>${esc(roleName)}</strong> for ${ev ? fmtDate(ev.date) : 'an event'} by your manager.`,
+      { eventId: slotInfo?.event_id, roleSlotId: slotId });
+
+    await renderEvents();
+    showToast('Volunteer assigned.');
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER: volunteer view
+// ════════════════════════════════════════════════════════════
+
+async function renderVolunteerView() {
+  const myId      = state.volunteerId;
+  const myName    = state.volunteerName;
+  const pill      = document.getElementById('vol-claims-pill');
+  const container = document.getElementById('vol-events-list');
+  if (!container) return;
+
+  if (!myName) {
+    pill.textContent = '0 slots claimed';
+    container.innerHTML = `
+      <div class="vol-prompt">
+        <h3>Who are you?</h3>
+        <p>Enter your name above to see and claim open slots.</p>
+      </div>`;
+    return;
+  }
+
+  const { data: events, error } = await db
+    .from('events')
+    .select(`
+      id, date, time, location, opponent, notes,
+      event_types ( name ),
+      role_slots (
+        id, status, role_template_id, cover_note,
+        role_templates ( role_name, restricted ),
+        claims ( id, status, volunteer_id, volunteers ( name ) )
+      )
+    `)
+    .eq('team_id', state.team?.id)
+    .order('date', { ascending: true })
+    .order('time', { ascending: true });
+  if (error) { console.error(error); return; }
+
+  if (!events || events.length === 0) {
+    pill.textContent = '0 slots claimed';
+    container.innerHTML = `
+      <div class="empty-state">
+        <h3>No events yet</h3>
+        <p>The manager hasn't added any events for this season.</p>
+      </div>`;
+    return;
+  }
+
+  // Count my active claims across all events for the pill badge
+  let myClaimCount = 0;
+  events.forEach(ev =>
+    (ev.role_slots || []).forEach(s => {
+      if (s.claims?.find(c => c.volunteer_id === myId && c.status === 'active')) myClaimCount++;
+    })
+  );
+  pill.textContent = `${myClaimCount} slot${myClaimCount !== 1 ? 's' : ''} claimed`;
+
+  const today    = new Date().toISOString().split('T')[0];
+  const upcoming = events.filter(ev => ev.date >= today);
+  const past     = events.filter(ev => ev.date < today).reverse();
+
+  const buildVolCard = (ev, isPast = false) => {
+    const slots     = (ev.role_slots || []).slice().sort((a, b) => a.id - b.id);
+    const openCount = slots.filter(s => normStatus(s.status) === 'open').length;
+
+    const slotCards = slots.map(s => {
+      const st          = normStatus(s.status);
+      const activeClaim = s.claims?.find(c => c.status === 'active');
+      const myClaim     = s.claims?.find(c => c.volunteer_id === myId);
+      const isOpen      = st === 'open';
+      const needsCover  = st === 'needs-cover';
+      const isCoverReq  = st === 'cover-requested';
+      const isOriginal  = activeClaim?.volunteer_id === myId && isCoverReq;
+      const isOffering  = myClaim?.status === 'cover_offer';
+      const isMine      = activeClaim?.volunteer_id === myId && st === 'claimed';
+      const isMineConf  = activeClaim?.volunteer_id === myId && st === 'confirmed';
+      const roleName    = s.role_templates?.role_name || '';
+
+      // Eligibility check for restricted roles
+      const isRestricted = s.role_templates?.restricted;
+      const isEligible   = !isRestricted || state.eligibleRoleIds.has(s.role_template_id);
+
+      let cssClass = `vol-slot ${isRestricted ? 'slot-restricted ' : ''}`;
+      let bottomEl = '';
+
+      if (!isPast && (isOpen || needsCover)) {
+        cssClass += 'is-open';
+        if (isEligible) {
+          bottomEl = `<button class="btn btn-primary btn-sm" onclick="claimSlot(${s.id})">Claim</button>`;
+        } else {
+          bottomEl = `<span style="font-size:11px;color:var(--gray-400);font-style:italic;">🔒 Restricted role</span>`;
+        }
+      } else if (isCoverReq && isOriginal) {
+        cssClass += 'is-mine-cover-req';
+        bottomEl = isPast ? '' : `<button class="btn btn-ghost btn-sm" onclick="cancelCoverRequest(${s.id})">Cancel Request</button>`;
+      } else if (isCoverReq && isOffering) {
+        cssClass += 'is-offering';
+        bottomEl = isPast ? '' : `<button class="btn btn-ghost btn-sm" onclick="cancelCoverOffer(${s.id})">Withdraw Offer</button>`;
+      } else if (!isPast && isCoverReq) {
+        cssClass += 'is-cover-needed';
+        bottomEl = isEligible
+          ? `<button class="btn btn-primary btn-sm" onclick="offerCover(${s.id})">Offer to Cover</button>`
+          : `<span style="font-size:11px;color:var(--gray-400);font-style:italic;">🔒 Restricted role</span>`;
+      } else if (isMine) {
+        cssClass += 'is-mine';
+        bottomEl = isPast ? '' : `
+          <span class="vol-slot-pending">⏳ Awaiting manager confirmation</span>
+          <button class="btn btn-ghost btn-sm" onclick="cancelClaim(${s.id})">Cancel</button>`;
+      } else if (isMineConf) {
+        cssClass += 'is-mine-confirmed';
+        bottomEl = isPast ? '' : `
+          <div id="cover-request-actions-${s.id}">
+            <button class="btn btn-secondary btn-sm" onclick="showRequestCoverForm(${s.id})">Request Cover</button>
+          </div>`;
+      } else {
+        cssClass += isPast ? 'is-taken' : 'is-taken';
+      }
+
+      const coverNoteHtml = (isCoverReq && s.cover_note)
+        ? `<div style="font-size:11px;color:var(--gray-500);font-style:italic;">💬 "${esc(s.cover_note)}"</div>`
+        : '';
+
+      const whoLabel = isOpen
+        ? `<span class="badge badge-open">Open</span>`
+        : needsCover
+          ? `<span class="badge badge-needs-cover">Needs Cover</span>`
+          : isCoverReq && isOriginal
+            ? `<span class="badge badge-cover-requested">Cover Req.</span>`
+          : isCoverReq && isOffering
+            ? `<span class="badge badge-cover-requested">Offering</span>`
+          : isCoverReq
+            ? `<span class="badge badge-cover-requested">Needs Cover</span>`
+          : isMine
+            ? `<span class="badge badge-claimed">Nominated</span>`
+          : isMineConf
+            ? `<span class="badge badge-confirmed">You ✓</span>`
+          : `<span class="vol-slot-who">${esc(activeClaim?.volunteers?.name || 'Taken')}</span>`;
+
+      return `
+        <div class="${cssClass}">
+          <div class="vol-slot-top">
+            <span class="vol-slot-role">${isRestricted ? '🔒 ' : ''}${esc(roleName)}</span>
+            ${whoLabel}
+          </div>
+          ${coverNoteHtml}
+          ${bottomEl}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="event-card${isPast ? ' past-event' : ''}">
+        <div class="event-card-header">
+          <div>
+            <div class="event-date-time">${fmtDate(ev.date)} &nbsp;·&nbsp; ${fmtTime(ev.time)}</div>
+            <div class="event-meta">
+              📍 ${esc(ev.location)}
+              ${ev.opponent ? ` &nbsp;·&nbsp; vs ${esc(ev.opponent)}` : ''}
+            </div>
+          </div>
+          <div class="event-right">
+            <span class="template-tag">${esc(ev.event_types?.name || '')}</span>
+            ${isPast
+              ? `<span class="open-count" style="color:var(--text-muted)">Past event</span>`
+              : `<span class="open-count">${openCount} open slot${openCount !== 1 ? 's' : ''}</span>`}
+          </div>
+        </div>
+        ${ev.notes ? `<div class="event-notes">📝 ${esc(ev.notes)}</div>` : ''}
+        ${slots.length > 0
+          ? `<div class="vol-slots">${slotCards}</div>`
+          : ''}
+      </div>`;
+  };
+
+  let html = '';
+
+  if (upcoming.length === 0) {
+    html += `<div class="empty-state" style="padding:20px;">No upcoming events yet.</div>`;
+  } else {
+    html += `<div class="events-section-label">Upcoming</div>`;
+    html += upcoming.map(ev => buildVolCard(ev, false)).join('');
+  }
+
+  if (past.length > 0) {
+    html += `
+      <div style="margin-top:8px;">
+        <button class="past-toggle-btn" onclick="togglePastSection('vol-past', 'vol-past-chev')">
+          <span>Past Events (${past.length})</span>
+          <span id="vol-past-chev">▾</span>
+        </button>
+        <div id="vol-past" class="past-events-body" style="display:none;">
+          ${past.map(ev => buildVolCard(ev, true)).join('')}
+        </div>
+      </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+
+function togglePastSection(bodyId, chevId) {
+  const body  = document.getElementById(bodyId);
+  const chev  = document.getElementById(chevId);
+  const shown = body.style.display !== 'none';
+  body.style.display = shown ? 'none' : '';
+  if (chev) chev.textContent = shown ? '▾' : '▴';
+}
+
+// ── Refresh ───────────────────────────────────────────────
+async function refreshView() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.classList.add('spinning'); setTimeout(() => btn.classList.remove('spinning'), 400); }
+  await run(async () => {
+    if (state.isManager) {
+      await Promise.all([renderTemplateList(), renderTemplateSelect(), renderEvents()]);
+    } else {
+      await loadVolunteerEligibility();
+      await renderVolunteerView();
+    }
+    await checkTimeBasedNotifications();
+    await renderNotifications();
+  });
+}
+
+// ── Volunteer list panel ──────────────────────────────────
+function toggleVolunteerPanel() {
+  const panel   = document.getElementById('vol-panel');
+  const overlay = document.getElementById('vol-panel-overlay');
+  const isOpen  = panel.classList.contains('open');
+  panel.classList.toggle('open');
+  overlay.classList.toggle('open');
+  if (!isOpen) renderVolunteerList();
+}
+
+async function loadVolunteerEligibility() {
+  if (!state.volunteerId) return;
+  const { data } = await db
+    .from('role_eligibility')
+    .select('role_template_id')
+    .eq('volunteer_id', state.volunteerId);
+  state.eligibleRoleIds = new Set((data || []).map(r => r.role_template_id));
+}
+
+async function renderVolunteerList() {
+  const container = document.getElementById('vol-list');
+  container.innerHTML = '<div class="notif-empty">Loading…</div>';
+
+  // Step 1: get volunteer IDs for this team via junction table
+  const { data: teamVolRows } = await db
+    .from('volunteer_teams').select('volunteer_id').eq('team_id', state.team?.id);
+  const volIds = (teamVolRows || []).map(r => r.volunteer_id);
+
+  const [volsRes, allRestrictedRes, eligRes, teamEtRes] = await Promise.all([
+    volIds.length > 0
+      ? db.from('volunteers').select('id, name, phone, email').in('id', volIds).order('name')
+      : Promise.resolve({ data: [], error: null }),
+    db.from('role_templates').select('id, role_name, event_type_id').eq('restricted', true),
+    db.from('role_eligibility').select('volunteer_id, role_template_id'),
+    db.from('event_types').select('id').eq('team_id', state.team?.id)
+  ]);
+
+  if (volsRes.error) { container.innerHTML = '<div class="notif-empty">Failed to load.</div>'; return; }
+
+  const vols       = volsRes.data  || [];
+  const teamEtIds  = new Set((teamEtRes.data || []).map(et => et.id));
+  // Only show restricted roles belonging to THIS team's event types
+  const restricted = (allRestrictedRes.data || []).filter(r => teamEtIds.has(r.event_type_id));
+  const elig       = eligRes.data  || [];
+
+  if (vols.length === 0) {
+    container.innerHTML = '<div class="notif-empty">No volunteers have joined yet.</div>';
+    return;
+  }
+
+  // Build lookup: "volId-roleId" for fast eligibility check
+  const eligSet = new Set(elig.map(e => `${e.volunteer_id}-${e.role_template_id}`));
+
+  container.innerHTML = vols.map(v => {
+    const chips = restricted.length > 0
+      ? restricted.map(r => {
+          const on = eligSet.has(`${v.id}-${r.id}`);
+          return `<button class="elig-chip ${on ? 'elig-chip-on' : 'elig-chip-off'}"
+            onclick="toggleEligibility(${v.id}, ${r.id}, ${on})">
+            ${on ? '✓' : '+'} ${esc(r.role_name)}
+          </button>`;
+        }).join('')
+      : `<span style="font-size:11px;color:var(--gray-400);">No restricted roles — set 🔒 in the template editor.</span>`;
+
+    return `
+      <div class="vol-list-item">
+        <span class="vol-list-name">${esc(v.name)}</span>
+        <span class="vol-list-meta">${[v.phone, v.email].filter(Boolean).join(' · ') || 'No contact info'}</span>
+        <div class="vol-elig-section">
+          <div class="vol-elig-label">Role eligibility</div>
+          <div class="vol-elig-chips">${chips}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function toggleEligibility(volunteerId, roleTemplateId, isCurrentlyEligible) {
+  if (isCurrentlyEligible) {
+    await db.from('role_eligibility')
+      .delete()
+      .eq('volunteer_id', volunteerId)
+      .eq('role_template_id', roleTemplateId);
+  } else {
+    await db.from('role_eligibility')
+      .insert({ volunteer_id: volunteerId, role_template_id: roleTemplateId });
+  }
+  await renderVolunteerList();
+}
+
+// ── Cover flow ────────────────────────────────────────────
+
+// Volunteer requests cover — stays responsible until manager confirms replacement.
+// `note` is an optional free-text reason (e.g. "hurt my back") shown to the
+// manager and to other volunteers deciding whether to offer to cover.
+async function requestCover(slotId, note) {
+  await run(async () => {
+    const { data: slot } = await db.from('role_slots')
+      .select('event_id, role_templates(role_name)').eq('id', slotId).single();
+    const { error } = await db.from('role_slots')
+      .update({ status: 'cover_requested', cover_note: note || null }).eq('id', slotId);
+    if (error) throw error;
+
+    const roleName = slot?.role_templates?.role_name || 'a slot';
+    const { data: ev } = slot?.event_id
+      ? await db.from('events').select('date').eq('id', slot.event_id).single()
+      : { data: null };
+    const noteText = note ? ` Note from ${esc(state.volunteerName)}: "${esc(note)}"` : '';
+    await notify('manager', state.team?.id, 'cover_requested',
+      `<strong>${esc(state.volunteerName)}</strong> requested cover for <strong>${esc(roleName)}</strong> on ${ev ? fmtDate(ev.date) : 'an upcoming event'}.${noteText}`,
+      { eventId: slot?.event_id, roleSlotId: slotId });
+
+    await renderVolunteerView();
+    await renderEvents();
+    showToast('Cover requested — you remain responsible until your manager confirms a replacement.');
+  });
+}
+
+// Shows an inline textarea in place of the "Request Cover" button so the
+// volunteer can optionally explain why before sending the request.
+function showRequestCoverForm(slotId) {
+  const el = document.getElementById(`cover-request-actions-${slotId}`);
+  if (!el) return;
+  el.innerHTML = `
+    <textarea id="cover-note-${slotId}" class="form-input" rows="2"
+      style="font-size:12px; resize:vertical;"
+      placeholder="Optional note for your manager (e.g. I hurt my back)"></textarea>
+    <div style="display:flex; gap:6px; margin-top:6px;">
+      <button class="btn btn-secondary btn-sm" onclick="submitRequestCover(${slotId})">Send Request</button>
+      <button class="btn btn-ghost btn-sm" onclick="renderVolunteerView()">Cancel</button>
+    </div>`;
+}
+
+function submitRequestCover(slotId) {
+  const noteEl = document.getElementById(`cover-note-${slotId}`);
+  requestCover(slotId, noteEl ? noteEl.value.trim() : '');
+}
+
+// Volunteer cancels their own cover request — restores their confirmed
+// status instantly, no manager action needed (they were confirmed before
+// requesting cover, so cancelling just undoes that request).
+async function cancelCoverRequest(slotId) {
+  await run(async () => {
+    // Drop any pending cover offers on this slot
+    await db.from('claims').update({ status: 'dropped' })
+      .eq('role_slot_id', slotId).eq('status', 'cover_offer');
+    const { error } = await db.from('role_slots')
+      .update({ status: 'confirmed', cover_note: null }).eq('id', slotId);
+    if (error) throw error;
+    await renderVolunteerView();
+    await renderEvents();
+    showToast("Cover request cancelled — you're confirmed for this role again.");
+  });
+}
+
+// Another volunteer offers to cover the slot
+async function offerCover(slotId) {
+  await run(async () => {
+    const { data: slot } = await db.from('role_slots').select('status').eq('id', slotId).single();
+    if (normStatus(slot?.status) !== 'cover-requested') {
+      showToast('That slot is no longer looking for cover.');
+      await renderVolunteerView();
+      return;
+    }
+    const { error } = await db.from('claims').insert({
+      role_slot_id: slotId, volunteer_id: state.volunteerId, status: 'cover_offer'
+    });
+    if (error) throw error;
+    await renderVolunteerView();
+    await renderEvents();
+    showToast('Offer submitted — your manager will confirm.');
+  });
+}
+
+// Volunteer withdraws their cover offer
+async function cancelCoverOffer(slotId) {
+  await run(async () => {
+    const { error } = await db.from('claims').update({ status: 'dropped' })
+      .eq('role_slot_id', slotId).eq('volunteer_id', state.volunteerId).eq('status', 'cover_offer');
+    if (error) throw error;
+    await renderVolunteerView();
+    showToast('Cover offer withdrawn.');
+  });
+}
+
+// Manager confirms a cover offer — swaps original volunteer for the new one
+async function confirmCover(slotId) {
+  await run(async () => {
+    const { data: slot, error: sErr } = await db.from('role_slots')
+      .select('id, role_templates(role_name), event_id, claims(id, status, volunteer_id, volunteers(name))')
+      .eq('id', slotId).single();
+    if (sErr) throw sErr;
+
+    const activeClaim = slot.claims?.find(c => c.status === 'active');
+    const offerClaim  = slot.claims?.find(c => c.status === 'cover_offer');
+    if (!offerClaim) { showToast('No cover offer found for this slot.'); return; }
+
+    if (activeClaim) {
+      await db.from('claims').update({ status: 'dropped' }).eq('id', activeClaim.id);
+    }
+    await db.from('claims').update({ status: 'active' }).eq('id', offerClaim.id);
+    const { error } = await db.from('role_slots')
+      .update({ status: 'confirmed', cover_note: null }).eq('id', slotId);
+    if (error) throw error;
+
+    const newVol   = offerClaim.volunteers?.name  || 'volunteer';
+    const roleName = slot.role_templates?.role_name || 'slot';
+    const { data: ev } = await db.from('events').select('date').eq('id', slot.event_id).single();
+
+    if (offerClaim.volunteer_id) {
+      await notify('volunteer', offerClaim.volunteer_id, 'role_confirmed',
+        `Your role of <strong>${esc(roleName)}</strong> for ${ev ? fmtDate(ev.date) : 'an event'} has been confirmed.`,
+        { eventId: slot.event_id, roleSlotId: slotId });
+    }
+    if (activeClaim?.volunteer_id) {
+      await notify('volunteer', activeClaim.volunteer_id, 'cover_filled',
+        `<strong>${esc(newVol)}</strong> will cover your <strong>${esc(roleName)}</strong> shift on ${ev ? fmtDate(ev.date) : 'the event'}.`,
+        { eventId: slot.event_id, roleSlotId: slotId });
+    }
+
+    await renderEvents();
+    await renderVolunteerView();
+    showToast(`Cover confirmed — ${newVol} is now assigned.`);
+  });
+}
+
+// Manager declines a cover offer — original volunteer stays on and their
+// cover request stays open (declining an offer isn't the same as
+// cancelling the request itself, so this returns to 'cover_requested',
+// not 'claimed' — the original volunteer was confirmed, not merely claimed).
+async function declineCoverOffer(slotId) {
+  await run(async () => {
+    await db.from('claims').update({ status: 'dropped' })
+      .eq('role_slot_id', slotId).eq('status', 'cover_offer');
+    const { error } = await db.from('role_slots').update({ status: 'cover_requested' }).eq('id', slotId);
+    if (error) throw error;
+    await renderEvents();
+    await renderVolunteerView();
+    showToast('Cover offer declined — original volunteer remains assigned.');
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ════════════════════════════════════════════════════════════
+
+// showPageDirect: internal routing — no button arg needed.
+function showPageDirect(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+}
+
+// showPage: kept for any inline onclick still referencing it (none currently).
+function showPage(name) { showPageDirect(name); }
+
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    showPageDirect('landing');
+    return;
+  }
+
+  state.authUserId = session.user.id;
+  state._authName  = session.user.user_metadata?.full_name || '';
+  await showRoleChoice();
+}
+
+// Fired when someone lands on this page via a "reset your password" email
+// link. Supabase parses the recovery token from the URL automatically and
+// creates a temporary session for it; we just need to show the "set a new
+// password" form instead of routing them into manager/volunteer view.
+db.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    showPageDirect('reset-password');
+  }
+});
+
+// Time-based reminders (unfilled-slots for managers, 48h/24h for volunteers)
+// are in-app only, so they only surface while someone has the tab open.
+// Re-check periodically to catch thresholds crossed during a long session.
+setInterval(() => {
+  if (state.team) run(async () => { await checkTimeBasedNotifications(); await renderNotifications(); });
+}, 10 * 60 * 1000);
+
+init();
+</script>
+</body>
+</html>
