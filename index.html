@@ -1409,11 +1409,7 @@
              onkeydown="if(event.key==='Enter') joinTeamWithCode()">
     </div>
     <button class="btn btn-primary btn-full" onclick="joinTeamWithCode()">Join Team →</button>
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <button class="btn btn-ghost btn-full" id="vol-join-skip-btn"
-              style="display:none;" onclick="skipToVolunteerView()">Skip for now</button>
-      <button class="btn btn-ghost btn-full" onclick="volunteerLogout()">Log Out</button>
-    </div>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px;" onclick="volunteerLogout()">Log Out</button>
   </div>
 </div>
 
@@ -2118,7 +2114,7 @@ async function addRole() {
   if (!roleName) { showToast('Enter a role name first.'); return; }
   await run(async () => {
     const { error } = await db.from('role_templates').insert({
-      event_type_id: id, role_name: roleName, quantity_needed: count
+      event_type_id: id, role_name: roleName, quantity_needed: count, team_id: state.team?.id
     });
     if (error) throw error;
     document.getElementById('new-role-name').value  = '';
@@ -2343,12 +2339,12 @@ async function addRoleToEvent() {
     // event only — it won't appear in the Event Templates list or affect
     // any other event.
     const { data: tpl, error: tplErr } = await db.from('role_templates')
-      .insert({ role_name: name, quantity_needed: count, event_type_id: null })
+      .insert({ role_name: name, quantity_needed: count, event_type_id: null, team_id: state.team?.id })
       .select('id').single();
     if (tplErr) throw tplErr;
 
     const newSlots = Array.from({ length: count }, () => ({
-      event_id: eventId, role_template_id: tpl.id, status: 'open'
+      event_id: eventId, role_template_id: tpl.id, status: 'open', team_id: state.team?.id
     }));
     const { error: slotErr } = await db.from('role_slots').insert(newSlots);
     if (slotErr) throw slotErr;
@@ -2404,7 +2400,7 @@ async function generateSlots(eventId, eventTypeId) {
   const slots = [];
   for (const tpl of (templates || [])) {
     for (let i = 0; i < tpl.quantity_needed; i++) {
-      slots.push({ event_id: eventId, role_template_id: tpl.id, status: 'open' });
+      slots.push({ event_id: eventId, role_template_id: tpl.id, status: 'open', team_id: state.team?.id });
     }
   }
   if (slots.length > 0) {
@@ -2681,7 +2677,14 @@ async function joinTeamWithCode() {
   const phone = document.getElementById('vol-join-phone')?.value.trim() || '';
   if (!code) { showToast('Enter the team code.'); return; }
   await run(async () => {
-    const team = await maybeOne(db.from('team').select('*').eq('join_code', code));
+    // Team lookup by code goes through an RPC rather than a direct
+    // table select — RLS on `team` only allows members to read a team
+    // row, but someone joining isn't a member yet. The function runs
+    // with elevated privilege and only ever returns the few fields
+    // needed to join, for an exact code match.
+    const { data: teamRows, error: teamErr } = await db.rpc('get_team_by_code', { p_code: code });
+    if (teamErr) throw teamErr;
+    const team = teamRows && teamRows[0];
     if (!team) { showToast('Invalid team code — double-check with your manager.'); return; }
 
     // First time this auth account is acting as a volunteer — create the
@@ -2720,15 +2723,13 @@ async function joinTeamWithCode() {
 /** Shown both for a first-time volunteer setup (via the role-choice
  *  screen) and for joining an additional team from within the app (the
  *  header's "+ Team" button). Only the first-time case needs the phone
- *  field, the skip option, or a "back to role choice" — a returning
- *  volunteer already has a profile and just wants to add a team code. */
+ *  field or a "back to role choice" — a returning volunteer already has
+ *  a profile and just wants to add a team code. */
 function showJoinTeam() {
   const phoneGroup = document.getElementById('vol-join-phone-group');
-  const skipBtn    = document.getElementById('vol-join-skip-btn');
   const isFirstTime = !state.volunteerId;
   state._joinTeamReturnTo = isFirstTime ? 'role-choice' : 'volunteer';
   if (phoneGroup) phoneGroup.style.display = isFirstTime ? '' : 'none';
-  if (skipBtn)    skipBtn.style.display = isFirstTime ? '' : 'none';
   document.getElementById('vol-join-code').value = '';
   showPageDirect('vol-join-team');
 }
@@ -2736,10 +2737,6 @@ function showJoinTeam() {
 function backFromJoinTeam() {
   if (state._joinTeamReturnTo === 'volunteer') { showPageDirect('volunteer'); }
   else { showRoleChoice(); }
-}
-
-function skipToVolunteerView() {
-  showPageDirect('volunteer');
 }
 
 function copyVolunteerLink() {
@@ -2799,31 +2796,6 @@ async function enterVolunteerMode() {
     await checkTimeBasedNotifications();
     await renderNotifications();
   });
-}
-
-// ── Volunteer DB identity ─────────────────────────────────
-
-// Looks up a volunteer by name; creates if not found.
-// Stores the id in state.volunteerId.
-async function resolveVolunteer(name, phone, email) {
-  const existing = await maybeOne(db.from('volunteers').select('id, team_id').eq('name', name));
-  if (existing) {
-    // Backfill team_id if the volunteer pre-dates the column
-    if (state.team?.id && !existing.team_id) {
-      await db.from('volunteers').update({ team_id: state.team.id }).eq('id', existing.id);
-    }
-    state.volunteerId = existing.id;
-    return existing.id;
-  }
-
-  const row = { name, team_id: state.team?.id || null };
-  if (phone) row.phone = phone;
-  if (email) row.email = email;
-  const { data: created, error } = await db
-    .from('volunteers').insert(row).select('id').single();
-  if (error) throw error;
-  state.volunteerId = created.id;
-  return created.id;
 }
 
 
@@ -2917,7 +2889,7 @@ async function claimSlot(slotId) {
     }
 
     const { error: claimErr } = await db.from('claims').insert({
-      role_slot_id: slotId, volunteer_id: state.volunteerId, status: 'active'
+      role_slot_id: slotId, volunteer_id: state.volunteerId, status: 'active', team_id: state.team?.id
     });
     // 23505 = unique violation on one_active_claim_per_slot index
     if (claimErr) {
@@ -2957,9 +2929,12 @@ async function cancelClaim(slotId) {
     );
     if (!claim) { showToast('Claim not found.'); return; }
 
-    await db.from('claims').update({ status: 'dropped' }).eq('id', claim.id);
+    // Update the slot first, while the claim is still 'active' — the RLS
+    // policy on role_slots checks for an active claim by the current
+    // volunteer, so this order matters (not just style).
     const { error } = await db.from('role_slots').update({ status: 'open' }).eq('id', slotId);
     if (error) throw error;
+    await db.from('claims').update({ status: 'dropped' }).eq('id', claim.id);
 
     await renderVolunteerView();
     await renderEvents();
@@ -2982,14 +2957,17 @@ async function unclaimSlot(slotId) {
     const roleName    = claim.role_slots?.role_templates?.role_name || '';
     const droppedName = claim.volunteers?.name || state.volunteerName;
 
-    const { error: claimUpdErr } = await db
-      .from('claims').update({ status: 'dropped' }).eq('id', claim.id);
-    if (claimUpdErr) throw claimUpdErr;
-
+    // Update the slot first, while the claim is still 'active' — the RLS
+    // policy on role_slots checks for an active claim by the current
+    // volunteer, so this order matters (not just style).
     // Volunteer-initiated drop → needs_cover (signals urgency to manager)
     const { error: slotUpdErr } = await db
       .from('role_slots').update({ status: 'needs_cover' }).eq('id', slotId);
     if (slotUpdErr) throw slotUpdErr;
+
+    const { error: claimUpdErr } = await db
+      .from('claims').update({ status: 'dropped' }).eq('id', claim.id);
+    if (claimUpdErr) throw claimUpdErr;
 
     await renderVolunteerView();
     await renderEvents();
@@ -3307,7 +3285,8 @@ async function confirmAssign(slotId) {
     const { error: claimErr } = await db.from('claims').insert({
       role_slot_id: slotId,
       volunteer_id: volunteerId,
-      status: 'active'
+      status: 'active',
+      team_id: state.team?.id
     });
     if (claimErr) throw claimErr;
 
@@ -3579,21 +3558,21 @@ async function renderVolunteerList() {
     .from('volunteer_teams').select('volunteer_id').eq('team_id', state.team?.id);
   const volIds = (teamVolRows || []).map(r => r.volunteer_id);
 
-  const [volsRes, allRestrictedRes, eligRes, teamEtRes] = await Promise.all([
+  const [volsRes, restrictedRes, eligRes] = await Promise.all([
     volIds.length > 0
       ? db.from('volunteers').select('id, name, phone, email').in('id', volIds).order('name')
       : Promise.resolve({ data: [], error: null }),
-    db.from('role_templates').select('id, role_name, event_type_id').eq('restricted', true),
-    db.from('role_eligibility').select('volunteer_id, role_template_id'),
-    db.from('event_types').select('id').eq('team_id', state.team?.id)
+    // Filtered directly by team_id now (role_templates carries its own
+    // team_id — see schema notes), so this also correctly includes
+    // restricted ad-hoc per-event roles, which have no event_type_id.
+    db.from('role_templates').select('id, role_name').eq('restricted', true).eq('team_id', state.team?.id),
+    db.from('role_eligibility').select('volunteer_id, role_template_id')
   ]);
 
   if (volsRes.error) { container.innerHTML = '<div class="notif-empty">Failed to load.</div>'; return; }
 
   const vols       = volsRes.data  || [];
-  const teamEtIds  = new Set((teamEtRes.data || []).map(et => et.id));
-  // Only show restricted roles belonging to THIS team's event types
-  const restricted = (allRestrictedRes.data || []).filter(r => teamEtIds.has(r.event_type_id));
+  const restricted = restrictedRes.data || [];
   const elig       = eligRes.data  || [];
 
   if (vols.length === 0) {
@@ -3715,7 +3694,7 @@ async function offerCover(slotId) {
       return;
     }
     const { error } = await db.from('claims').insert({
-      role_slot_id: slotId, volunteer_id: state.volunteerId, status: 'cover_offer'
+      role_slot_id: slotId, volunteer_id: state.volunteerId, status: 'cover_offer', team_id: state.team?.id
     });
     if (error) throw error;
     await renderVolunteerView();
